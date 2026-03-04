@@ -1,0 +1,10 @@
+project_id = "ajvfsegkxikldmzifuro"
+
+[functions.create-session]
+verify_jwt = false
+
+[functions.choose-and-generate-next]
+verify_jwt = false
+
+[functions.mark-ad-shown]
+verify_jwt = false
