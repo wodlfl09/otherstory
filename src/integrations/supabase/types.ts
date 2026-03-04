@@ -14,6 +14,87 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_passes: {
+        Row: {
+          created_at: string | null
+          expires_at: string
+          id: string
+          target_id: string
+          target_type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at: string
+          id?: string
+          target_id: string
+          target_type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          target_id?: string
+          target_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      comments: {
+        Row: {
+          body: string
+          created_at: string | null
+          id: string
+          target_id: string
+          target_type: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string | null
+          id?: string
+          target_id: string
+          target_type: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string | null
+          id?: string
+          target_id?: string
+          target_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      credit_tx: {
+        Row: {
+          created_at: string | null
+          delta: number
+          idempotency_key: string
+          kind: string
+          ref: Json | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          delta?: number
+          idempotency_key: string
+          kind: string
+          ref?: Json | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          delta?: number
+          idempotency_key?: string
+          kind?: string
+          ref?: Json | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       credits_ledger: {
         Row: {
           created_at: string
@@ -115,6 +196,30 @@ export type Database = {
           },
         ]
       }
+      likes: {
+        Row: {
+          created_at: string | null
+          id: string
+          target_id: string
+          target_type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          target_id: string
+          target_type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          target_id?: string
+          target_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           adult_verified: boolean
@@ -124,6 +229,7 @@ export type Database = {
           gender: string | null
           id: string
           plan: Database["public"]["Enums"]["app_plan"]
+          role: string | null
           updated_at: string
           user_id: string
         }
@@ -135,6 +241,7 @@ export type Database = {
           gender?: string | null
           id?: string
           plan?: Database["public"]["Enums"]["app_plan"]
+          role?: string | null
           updated_at?: string
           user_id: string
         }
@@ -146,10 +253,97 @@ export type Database = {
           gender?: string | null
           id?: string
           plan?: Database["public"]["Enums"]["app_plan"]
+          role?: string | null
           updated_at?: string
           user_id?: string
         }
         Relationships: []
+      }
+      public_games: {
+        Row: {
+          creator_id: string
+          like_count: number | null
+          play_count: number | null
+          published_at: string | null
+          story_id: string
+        }
+        Insert: {
+          creator_id: string
+          like_count?: number | null
+          play_count?: number | null
+          published_at?: string | null
+          story_id: string
+        }
+        Update: {
+          creator_id?: string
+          like_count?: number | null
+          play_count?: number | null
+          published_at?: string | null
+          story_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_games_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: true
+            referencedRelation: "stories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      public_novels: {
+        Row: {
+          cover_url: string | null
+          creator_id: string
+          id: string
+          like_count: number | null
+          published_at: string | null
+          session_id: string
+          story_id: string
+          synopsis: string | null
+          title: string
+          view_count: number | null
+        }
+        Insert: {
+          cover_url?: string | null
+          creator_id: string
+          id?: string
+          like_count?: number | null
+          published_at?: string | null
+          session_id: string
+          story_id: string
+          synopsis?: string | null
+          title: string
+          view_count?: number | null
+        }
+        Update: {
+          cover_url?: string | null
+          creator_id?: string
+          id?: string
+          like_count?: number | null
+          published_at?: string | null
+          session_id?: string
+          story_id?: string
+          synopsis?: string | null
+          title?: string
+          view_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_novels_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "story_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "public_novels_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "stories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       refund_requests: {
         Row: {
@@ -178,31 +372,61 @@ export type Database = {
         }
         Relationships: []
       }
+      replay_daily_limits: {
+        Row: {
+          count: number | null
+          day: string
+          user_id: string
+        }
+        Insert: {
+          count?: number | null
+          day: string
+          user_id: string
+        }
+        Update: {
+          count?: number | null
+          day?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       stories: {
         Row: {
           config: Json | null
+          cover_url: string | null
           created_at: string
           genre: string
           id: string
+          is_public: boolean | null
+          protagonist_name: string | null
           source_type: Database["public"]["Enums"]["source_type"]
+          synopsis: string | null
           title: string
           user_id: string
         }
         Insert: {
           config?: Json | null
+          cover_url?: string | null
           created_at?: string
           genre: string
           id?: string
+          is_public?: boolean | null
+          protagonist_name?: string | null
           source_type?: Database["public"]["Enums"]["source_type"]
+          synopsis?: string | null
           title: string
           user_id: string
         }
         Update: {
           config?: Json | null
+          cover_url?: string | null
           created_at?: string
           genre?: string
           id?: string
+          is_public?: boolean | null
+          protagonist_name?: string | null
           source_type?: Database["public"]["Enums"]["source_type"]
+          synopsis?: string | null
           title?: string
           user_id?: string
         }
@@ -349,10 +573,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_role: { Args: { _user_id: string }; Returns: string }
     }
     Enums: {
       app_plan: "free" | "basic" | "pro"
+      app_role_v2: "user" | "subadmin" | "admin"
       refund_status: "pending" | "approved" | "rejected"
       source_type: "simple" | "custom" | "external"
     }
@@ -483,6 +708,7 @@ export const Constants = {
   public: {
     Enums: {
       app_plan: ["free", "basic", "pro"],
+      app_role_v2: ["user", "subadmin", "admin"],
       refund_status: ["pending", "approved", "rejected"],
       source_type: ["simple", "custom", "external"],
     },
