@@ -11,6 +11,7 @@ import CreateStory from "@/pages/CreateStory";
 import GamePlay from "@/pages/GamePlay";
 import Library from "@/pages/Library";
 import Billing from "@/pages/Billing";
+import AdultVerify from "@/pages/AdultVerify";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/game/:sessionId" element={<ProtectedRoute><GamePlay /></ProtectedRoute>} />
             <Route path="/library" element={<ProtectedRoute><Library /></ProtectedRoute>} />
             <Route path="/billing" element={<ProtectedRoute><Billing /></ProtectedRoute>} />
+            <Route path="/adult-verify" element={<ProtectedRoute><AdultVerify /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
