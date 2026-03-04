@@ -26,7 +26,7 @@ export default function UpgradeModal({ open, onOpenChange, feature, requiredPlan
           <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
             닫기
           </Button>
-          <Button onClick={() => { onOpenChange(false); navigate("/billing"); }} className="flex-1">
+          <Button onClick={() => { onOpenChange(false); navigate("/pricing"); }} className="flex-1">
             플랜 보기
           </Button>
         </div>

@@ -14,7 +14,7 @@ const PLANS = [
       "선택지 2개 / 결말 2개",
       "10분 플레이",
       "라이브러리 3개",
-      "광고 포함",
+      "재진행 일일 3회 (광고)",
     ],
   },
   {
@@ -26,6 +26,7 @@ const PLANS = [
       "선택지 3개 / 결말 3개",
       "10/20분 플레이",
       "라이브러리 9개",
+      "재진행: 크레딧 또는 광고",
     ],
   },
   {
@@ -39,12 +40,13 @@ const PLANS = [
       "선택지 3개 / 결말 3개",
       "10/20/30분 플레이",
       "라이브러리 무제한",
+      "재진행: 크레딧 또는 광고",
       "광고 없음",
     ],
   },
 ];
 
-export default function Billing() {
+export default function Pricing() {
   const { profile } = useAuth();
 
   const handleSubscribe = (planId: string) => {
@@ -98,14 +100,13 @@ export default function Billing() {
           })}
         </div>
 
-        {/* Credits */}
         <div className="mt-16 rounded-2xl border border-border bg-card p-8 text-center">
           <div className="flex items-center justify-center gap-2 mb-4">
             <Zap className="h-5 w-5 text-accent" />
             <h2 className="font-display text-xl font-bold">크레딧 충전</h2>
           </div>
           <p className="text-sm text-muted-foreground mb-6">1회 결제로 크레딧을 추가 구매할 수 있습니다.</p>
-          <div className="flex justify-center gap-4">
+          <div className="flex justify-center gap-4 flex-wrap">
             <Button variant="outline" onClick={() => toast.info("준비 중")}>50 크레딧 — $10</Button>
             <Button variant="outline" onClick={() => toast.info("준비 중")}>150 크레딧 — $25</Button>
             <Button onClick={() => toast.info("준비 중")}>500 크레딧 — $70</Button>

@@ -10,8 +10,13 @@ import Home from "@/pages/Home";
 import CreateStory from "@/pages/CreateStory";
 import GamePlay from "@/pages/GamePlay";
 import Library from "@/pages/Library";
-import Billing from "@/pages/Billing";
+import Pricing from "@/pages/Pricing";
 import AdultVerify from "@/pages/AdultVerify";
+import Explore from "@/pages/Explore";
+import StoryReader from "@/pages/StoryReader";
+import NovelReader from "@/pages/NovelReader";
+import Admin from "@/pages/Admin";
+import Ad from "@/pages/Ad";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,7 +35,12 @@ const App = () => (
             <Route path="/create" element={<ProtectedRoute><CreateStory /></ProtectedRoute>} />
             <Route path="/game/:sessionId" element={<ProtectedRoute><GamePlay /></ProtectedRoute>} />
             <Route path="/library" element={<ProtectedRoute><Library /></ProtectedRoute>} />
-            <Route path="/billing" element={<ProtectedRoute><Billing /></ProtectedRoute>} />
+            <Route path="/pricing" element={<ProtectedRoute><Pricing /></ProtectedRoute>} />
+            <Route path="/explore" element={<ProtectedRoute><Explore /></ProtectedRoute>} />
+            <Route path="/story/:storyId" element={<ProtectedRoute><StoryReader /></ProtectedRoute>} />
+            <Route path="/novel/:novelId" element={<ProtectedRoute><NovelReader /></ProtectedRoute>} />
+            <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
+            <Route path="/ad" element={<ProtectedRoute><Ad /></ProtectedRoute>} />
             <Route path="/adult-verify" element={<ProtectedRoute><AdultVerify /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -11,7 +11,8 @@ async function generateImage(
   genre: string,
   imageBrief: string,
   sessionId: string,
-  step: number
+  step: number,
+  characterBible?: any
 ): Promise<string | null> {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   if (!LOVABLE_API_KEY) return null;
@@ -29,7 +30,14 @@ async function generateImage(
       adult: "mature dramatic scene, cinematic noir lighting, sophisticated",
     };
     const styleHint = styleHints[genre] || "cinematic scene";
-    const prompt = `Generate a 16:9 widescreen illustration: ${styleHint}. ${imageBrief}. High quality, detailed, no text or watermarks.`;
+
+    let charDesc = "";
+    if (characterBible) {
+      const a = characterBible.appearance || {};
+      charDesc = `Main character: ${characterBible.name || ""}, ${a.hair || ""} hair, ${a.eyes || ""} eyes, ${a.build || ""} build, wearing ${a.clothing || ""}. ${a.distinctive_features || ""}. `;
+    }
+
+    const prompt = `Generate a 16:9 widescreen illustration: ${styleHint}. ${charDesc}${imageBrief}. High quality, detailed, no text or watermarks.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -271,8 +279,9 @@ ${recentHistory}
       }
     }
 
-    // Generate image via Lovable AI (Gemini Image)
-    const imageUrl = await generateImage(supabase, genre, imageBrief, session_id, nextStep);
+    // Generate image via Lovable AI (Gemini Image) with character_bible
+    const characterBible = state.character_bible;
+    const imageUrl = await generateImage(supabase, genre, imageBrief, session_id, nextStep, characterBible);
 
     // Insert new node
     await supabase.from("story_nodes").insert({
