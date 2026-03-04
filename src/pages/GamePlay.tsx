@@ -3,8 +3,8 @@ import { useParams } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { toast } from "sonner";
-import type { Json } from "@/integrations/supabase/types";
 
 interface Choice {
   id: string;
@@ -99,10 +99,7 @@ export default function GamePlay() {
     setAdTimer(5);
     const interval = setInterval(() => {
       setAdTimer((t) => {
-        if (t <= 1) {
-          clearInterval(interval);
-          return 0;
-        }
+        if (t <= 1) { clearInterval(interval); return 0; }
         return t - 1;
       });
     }, 1000);
@@ -114,6 +111,20 @@ export default function GamePlay() {
     });
     setShowAd(false);
     setSession((s: any) => s ? { ...s, ad_shown: true } : s);
+  };
+
+  const attitudeColors: Record<string, string> = {
+    positive: "border-green-500/30 hover:border-green-500/60 hover:bg-green-500/5",
+    negative: "border-red-500/30 hover:border-red-500/60 hover:bg-red-500/5",
+    avoidance: "border-yellow-500/30 hover:border-yellow-500/60 hover:bg-yellow-500/5",
+    neutral: "border-border hover:border-primary hover:bg-primary/10",
+  };
+
+  const attitudeIcons: Record<string, string> = {
+    positive: "⚔️",
+    negative: "🛡️",
+    avoidance: "🚪",
+    neutral: "🤔",
   };
 
   if (loading) {
@@ -134,9 +145,15 @@ export default function GamePlay() {
         <div className="container mx-auto max-w-3xl px-4 pt-24 text-center">
           <h1 className="font-display text-3xl font-bold text-primary">🎬 이야기가 끝났습니다</h1>
           {node && (
-            <div className="mt-8 rounded-xl border border-border bg-card p-8">
-              {node.image_url && <img src={node.image_url} alt="엔딩 삽화" className="mb-6 w-full rounded-lg" />}
-              <p className="whitespace-pre-wrap text-left leading-relaxed text-foreground">{node.scene_text}</p>
+            <div className="mt-8 space-y-6">
+              {node.image_url && (
+                <AspectRatio ratio={16 / 9} className="overflow-hidden rounded-xl border border-border shadow-lg">
+                  <img src={node.image_url} alt="엔딩 삽화" className="h-full w-full object-cover" />
+                </AspectRatio>
+              )}
+              <div className="rounded-xl border border-border bg-card p-8">
+                <p className="whitespace-pre-wrap text-left leading-[1.9] text-foreground text-[15px]">{node.scene_text}</p>
+              </div>
             </div>
           )}
         </div>
@@ -170,7 +187,7 @@ export default function GamePlay() {
             <span>장면 {(session.step || 0) + 1}</span>
             <div className="h-1.5 flex-1 mx-4 rounded-full bg-secondary overflow-hidden">
               <div
-                className="h-full rounded-full bg-primary transition-all"
+                className="h-full rounded-full bg-primary transition-all duration-500"
                 style={{
                   width: `${Math.min(100, ((session.step || 0) / (session.duration_min === 10 ? 7 : session.duration_min === 20 ? 13 : 19)) * 100)}%`,
                 }}
@@ -183,11 +200,20 @@ export default function GamePlay() {
         {/* Scene */}
         {node && (
           <div className="space-y-6 opacity-0 animate-fade-in">
+            {/* 16:9 Scene Image */}
             {node.image_url && (
-              <img src={node.image_url} alt="장면 삽화" className="w-full rounded-xl border border-border shadow-lg" />
+              <AspectRatio ratio={16 / 9} className="overflow-hidden rounded-xl border border-border shadow-lg">
+                <img
+                  src={node.image_url}
+                  alt={`장면 ${node.step + 1} 삽화`}
+                  className="h-full w-full object-cover"
+                />
+              </AspectRatio>
             )}
+
+            {/* Scene Text */}
             <div className="rounded-xl border border-border bg-card p-6 md:p-8">
-              <p className="whitespace-pre-wrap leading-relaxed text-foreground text-[15px]">
+              <p className="whitespace-pre-wrap leading-[1.9] text-foreground text-[15px]">
                 {node.scene_text}
               </p>
             </div>
@@ -195,28 +221,30 @@ export default function GamePlay() {
             {/* Choices */}
             {node.choices && node.choices.length > 0 && (
               <div className="space-y-3">
-                {node.choices.map((choice, i) => (
-                  <Button
-                    key={choice.id}
-                    variant="outline"
-                    disabled={choosing}
-                    onClick={() => handleChoice(choice.id)}
-                    className="w-full justify-start gap-3 border-border bg-secondary py-5 text-left text-sm hover:border-primary hover:bg-primary/10 opacity-0 animate-fade-in"
-                    style={{ animationDelay: `${300 + i * 100}ms` }}
-                  >
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/20 text-xs font-bold text-primary">
-                      {i + 1}
-                    </span>
-                    {choice.label}
-                  </Button>
-                ))}
+                {node.choices.map((choice, i) => {
+                  const colorClass = attitudeColors[choice.attitude] || attitudeColors.neutral;
+                  const icon = attitudeIcons[choice.attitude] || "🤔";
+                  return (
+                    <button
+                      key={choice.id}
+                      disabled={choosing}
+                      onClick={() => handleChoice(choice.id)}
+                      className={`w-full flex items-start gap-4 rounded-xl border bg-secondary/50 p-5 text-left text-sm transition-all duration-200 disabled:opacity-50 opacity-0 animate-fade-in ${colorClass}`}
+                      style={{ animationDelay: `${300 + i * 100}ms` }}
+                    >
+                      <span className="mt-0.5 text-lg">{icon}</span>
+                      <span className="flex-1 leading-relaxed text-foreground">{choice.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             )}
 
             {choosing && (
-              <div className="flex items-center justify-center gap-3 py-8 text-muted-foreground">
-                <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                다음 장면을 생성하는 중...
+              <div className="flex flex-col items-center justify-center gap-3 py-12 text-muted-foreground">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                <p className="text-sm">다음 장면을 생성하는 중...</p>
+                <p className="text-xs text-muted-foreground/60">AI가 삽화와 텍스트를 만들고 있습니다</p>
               </div>
             )}
           </div>
