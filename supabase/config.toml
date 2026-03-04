@@ -8,3 +8,21 @@ verify_jwt = false
 
 [functions.mark-ad-shown]
 verify_jwt = false
+
+[functions.replay-story]
+verify_jwt = false
+
+[functions.play-public-game]
+verify_jwt = false
+
+[functions.read-public-novel]
+verify_jwt = false
+
+[functions.publish-content]
+verify_jwt = false
+
+[functions.admin-manage]
+verify_jwt = false
+
+[functions.toggle-like]
+verify_jwt = false
