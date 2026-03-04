@@ -23,7 +23,7 @@ export default function GenreGrid() {
 
   const handleGenreClick = (genre: typeof GENRES[number]) => {
     if (genre.id === "adult" && !profile?.adult_verified) {
-      toast.error("성인 인증이 필요합니다.");
+      navigate("/adult-verify");
       return;
     }
     navigate(`/create?genre=${genre.id}`);
