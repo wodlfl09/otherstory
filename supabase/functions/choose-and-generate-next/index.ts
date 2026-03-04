@@ -13,58 +13,61 @@ async function generateImage(
   sessionId: string,
   step: number
 ): Promise<string | null> {
-  const CF_ACCOUNT_ID = Deno.env.get("CLOUDFLARE_ACCOUNT_ID");
-  const CF_API_TOKEN = Deno.env.get("CLOUDFLARE_API_TOKEN");
-  if (!CF_ACCOUNT_ID || !CF_API_TOKEN) return null;
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (!LOVABLE_API_KEY) return null;
 
   try {
-    const { data: styles } = await supabase
-      .from("image_style_profiles")
-      .select("*")
-      .contains("genres", [genre]);
+    const styleHints: Record<string, string> = {
+      sf: "cinematic sci-fi cyberpunk lighting, neon glow, futuristic city",
+      fantasy: "epic fantasy painting, dramatic lighting, magical atmosphere",
+      mystery: "noir atmosphere, dark shadows, moody detective scene",
+      action: "dynamic action shot, motion blur, intense cinematic",
+      horror: "dark horror atmosphere, eerie shadows, unsettling mood",
+      romance: "soft warm lighting, dreamy bokeh, emotional scene",
+      comic: "vibrant colorful scene, comedic expression, lively atmosphere",
+      martial: "wuxia ink wash style, martial arts pose, flowing robes",
+      adult: "mature dramatic scene, cinematic noir lighting, sophisticated",
+    };
+    const styleHint = styleHints[genre] || "cinematic scene";
+    const prompt = `Generate a 16:9 widescreen illustration: ${styleHint}. ${imageBrief}. High quality, detailed, no text or watermarks.`;
 
-    const style = styles?.[0];
-    if (!style) return null;
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-3-pro-image-preview",
+        messages: [{ role: "user", content: prompt }],
+        modalities: ["image", "text"],
+      }),
+    });
 
-    const prompt = `${style.prompt_prefix}${imageBrief}`;
-
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        const cfResponse = await fetch(
-          `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/ai/run/${style.model_id}`,
-          {
-            method: "POST",
-            headers: { Authorization: `Bearer ${CF_API_TOKEN}`, "Content-Type": "application/json" },
-            body: JSON.stringify({
-              prompt,
-              negative_prompt: style.negative_prompt,
-              width: style.width,
-              height: style.height,
-              num_steps: style.steps,
-              guidance: style.cfg,
-            }),
-          }
-        );
-
-        if (!cfResponse.ok) {
-          console.error(`CF attempt ${attempt} failed:`, cfResponse.status);
-          continue;
-        }
-
-        const imageData = await cfResponse.arrayBuffer();
-        const fileName = `${sessionId}/step_${step}.png`;
-        const { error: uploadErr } = await supabase.storage
-          .from("story-images")
-          .upload(fileName, imageData, { contentType: "image/png", upsert: true });
-        if (uploadErr) { console.error("Upload error:", uploadErr); continue; }
-
-        const { data: urlData } = supabase.storage.from("story-images").getPublicUrl(fileName);
-        return urlData?.publicUrl || null;
-      } catch (err) {
-        console.error(`CF attempt ${attempt} error:`, err);
-      }
+    if (!response.ok) {
+      console.error("Image gen failed:", response.status);
+      return null;
     }
-    return null;
+
+    const data = await response.json();
+    const imageDataUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    if (!imageDataUrl) return null;
+
+    const base64Match = imageDataUrl.match(/^data:image\/(\w+);base64,(.+)$/);
+    if (!base64Match) return null;
+
+    const imageBytes = Uint8Array.from(atob(base64Match[2]), c => c.charCodeAt(0));
+    const ext = base64Match[1] === "jpeg" ? "jpg" : base64Match[1];
+    const fileName = `${sessionId}/step_${step}.${ext}`;
+
+    const { error: uploadErr } = await supabase.storage
+      .from("story-images")
+      .upload(fileName, imageBytes, { contentType: `image/${base64Match[1]}`, upsert: true });
+
+    if (uploadErr) { console.error("Upload error:", uploadErr); return null; }
+
+    const { data: urlData } = supabase.storage.from("story-images").getPublicUrl(fileName);
+    return urlData?.publicUrl || null;
   } catch (err) {
     console.error("Image gen error:", err);
     return null;
@@ -140,7 +143,7 @@ serve(async (req) => {
         };
         const genreDesc = genreDescMap[genre] || genre;
 
-        const recentHistory = history.slice(-5).map((h: any) => 
+        const recentHistory = history.slice(-5).map((h: any) =>
           `[${h.attitude}] ${h.choice_label}`
         ).join("\n");
 
@@ -152,25 +155,30 @@ serve(async (req) => {
         };
 
         const effect = attitudeEffect[selectedChoice?.attitude || "neutral"];
+        const prevSceneExcerpt = currentNode?.scene_text?.slice(-200) || "";
 
-        const systemPrompt = `당신은 ${genreDesc} 장르 전문 프리미엄 웹소설 작가입니다.
-규칙:
-1. 한국어 750~1200자, 2~3문단
-2. 감각 묘사(시각/청각/촉각/후각) 필수
-3. 주인공 내면(감정/사고) 자연스럽게 표현
-4. 사건 진전 + 긴장감
-5. 클리셰 금지(갑자기 눈을 떴다/심장이 빠르게 뛰었다 등)
-6. 과거형 서술체("~했다", "~였다")
-${isEnding ? "7. 이것은 엔딩입니다. 감동적이고 여운 있게 마무리하세요. 선택지를 제공하지 마세요." : "7. 마지막 문장은 다음 선택을 유도하는 갈림길로 끝내세요."}
+        const systemPrompt = `당신은 ${genreDesc} 장르의 베스트셀러 웹소설 작가입니다.
+
+[필수 규칙]
+1. 한국어 800~1200자, 3문단 구성
+2. 이전 장면과 자연스럽게 이어지는 전개
+3. 오감 묘사 최소 3가지 감각 포함
+4. 인물의 감정을 행동/대사로 보여주기 (직접 설명 금지)
+5. 사건이 확실히 진전되는 전개
+6. 과거형 서술체 ("~했다", "~였다")
+7. 금지: "갑자기", "심장이 뛰었다" 등 진부한 표현
+${isEnding ? "8. 이것은 최종 엔딩입니다. 여운이 깊게 남는 결말로 마무리하세요. 선택지 없이 끝내세요." : "8. 마지막 문단은 새로운 갈림길 상황으로 끝내세요."}
 
 주인공: ${state.name} (${state.gender === "male" ? "남성" : "여성"})
-${state.protagonist ? `설정: ${state.protagonist}` : ""}
+${state.protagonist ? `캐릭터 설정: ${state.protagonist}` : ""}
 
-이전 선택 히스토리:
+이전 선택 흐름:
 ${recentHistory}
 
-플레이어의 마지막 선택: "${selectedChoice?.label || choice_id}"
-→ ${effect}로 이야기가 전개됩니다.`;
+직전 장면 끝부분: "${prevSceneExcerpt}"
+
+플레이어의 선택: "${selectedChoice?.label || choice_id}"
+→ ${effect}`;
 
         const toolDef = isEnding ? undefined : [{
           type: "function" as const,
@@ -180,15 +188,15 @@ ${recentHistory}
             parameters: {
               type: "object",
               properties: {
-                scene_text: { type: "string", description: "750-1200자 한국어 장면" },
-                image_brief: { type: "string", description: "16:9 삽화용 영어 프롬프트, 50단어 이내" },
+                scene_text: { type: "string", description: "800-1200자 한국어 장면" },
+                image_brief: { type: "string", description: "16:9 삽화용 영어 프롬프트, 50단어 이내. 구체적 장면/인물/분위기" },
                 choices: {
                   type: "array",
                   items: {
                     type: "object",
                     properties: {
                       id: { type: "string" },
-                      label: { type: "string" },
+                      label: { type: "string", description: "한국어 선택지 (15-30자, 구체적 행동)" },
                       attitude: { type: "string", enum: ["positive", "negative", "avoidance", "neutral"] },
                     },
                     required: ["id", "label", "attitude"],
@@ -201,10 +209,12 @@ ${recentHistory}
         }];
 
         const aiBody: any = {
-          model: "google/gemini-2.5-flash",
+          model: "google/gemini-3-flash-preview",
           messages: [
             { role: "system", content: systemPrompt },
-            { role: "user", content: isEnding ? "엔딩 장면을 생성해주세요. 여운이 남는 결말로 마무리해주세요." : `다음 장면과 ${session.choices_count}개의 선택지를 생성해주세요. 선택지는 서로 상반되는 태도(긍정/부정/회피)로 구성하세요.` },
+            { role: "user", content: isEnding
+              ? "엔딩 장면을 생성하세요. 지금까지의 선택이 수렴하는 여운 깊은 결말을 써주세요."
+              : `다음 장면과 ${session.choices_count}개의 선택지를 생성하세요. 선택지는 서로 다른 태도(긍정/부정/회피/중립)로 구성하세요.` },
           ],
         };
 
@@ -244,33 +254,6 @@ ${recentHistory}
         } else if (aiResponse.status === 402) {
           console.error("AI payment required");
         }
-
-        // Rewrite pass
-        if (sceneText && LOVABLE_API_KEY) {
-          try {
-            const rewriteResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${LOVABLE_API_KEY}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                model: "google/gemini-2.5-flash",
-                messages: [
-                  { role: "system", content: `프리미엄 웹소설 편집자로서 아래 텍스트를 리라이트하세요.
-규칙: 750~1200자 유지, 클리셰 제거, 감각 묘사 강화, 문장 리듬 다양화, 과거형 서술체.
-핵심 사건과 구조는 보존하세요.` },
-                  { role: "user", content: sceneText },
-                ],
-              }),
-            });
-            if (rewriteResp.ok) {
-              const rewriteData = await rewriteResp.json();
-              const rewritten = rewriteData.choices?.[0]?.message?.content;
-              if (rewritten && rewritten.length >= 500) sceneText = rewritten;
-            }
-          } catch (rwErr) { console.error("Rewrite error:", rwErr); }
-        }
       } catch (aiErr) {
         console.error("AI error:", aiErr);
       }
@@ -288,7 +271,7 @@ ${recentHistory}
       }
     }
 
-    // Generate image
+    // Generate image via Lovable AI (Gemini Image)
     const imageUrl = await generateImage(supabase, genre, imageBrief, session_id, nextStep);
 
     // Insert new node
