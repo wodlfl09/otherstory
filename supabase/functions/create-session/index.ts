@@ -141,6 +141,20 @@ serve(async (req) => {
 
     if (storyErr) throw storyErr;
 
+    // Auto-save to library (check plan limit)
+    const { count: libCount } = await supabase
+      .from("library_items")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id);
+
+    const maxLib = profile.plan === "pro" ? Infinity : profile.plan === "basic" ? 9 : 3;
+    if ((libCount ?? 0) < maxLib) {
+      await supabase.from("library_items").insert({
+        user_id: user.id,
+        story_id: story.id,
+      });
+    }
+
     // Determine total steps
     const totalSteps: Record<number, number> = { 10: 7, 20: 13, 30: 19 };
     const steps = totalSteps[duration_min] ?? 7;
