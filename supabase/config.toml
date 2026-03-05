@@ -26,3 +26,9 @@ verify_jwt = false
 
 [functions.toggle-like]
 verify_jwt = false
+
+[functions.complete-replay-after-ad]
+verify_jwt = false
+
+[functions.add-comment]
+verify_jwt = false
