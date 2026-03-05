@@ -22,9 +22,9 @@ serve(async (req) => {
     if (authError || !user) throw new Error("Unauthorized");
 
     const { story_id, idempotency_key } = await req.json();
-    if (!story_id || !idempotency_key) throw new Error("Missing story_id or idempotency_key");
+    if (!story_id || !idempotency_key) throw new Error("Missing params");
 
-    // Idempotency check
+    // Idempotency
     const { data: existingTx } = await supabase
       .from("credit_tx")
       .select("idempotency_key")
@@ -44,7 +44,7 @@ serve(async (req) => {
       });
     }
 
-    // Daily replay limit check
+    // Re-check daily limit
     const today = new Date().toISOString().split("T")[0];
     const { data: dailyLimit } = await supabase
       .from("replay_daily_limits")
@@ -56,54 +56,29 @@ serve(async (req) => {
     const currentCount = dailyLimit?.count ?? 0;
     if (currentCount >= 3) throw new Error("일일 재진행 제한(3회)에 도달했습니다.");
 
-    // Get profile
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("user_id", user.id)
-      .single();
-    if (!profile) throw new Error("Profile not found");
-
-    const plan = profile.plan || "free";
-
-    // Decision: credits or ad?
-    if (plan === "free") {
-      // Free: always ad
-      return new Response(JSON.stringify({ ad_required: true }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Basic/Pro
-    if (profile.credits < 10) {
-      // Not enough credits → ad required
-      return new Response(JSON.stringify({ ad_required: true }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Has credits → deduct and create session
-    await supabase.from("profiles").update({ credits: profile.credits - 10 }).eq("user_id", user.id);
+    // Record tx (0 delta, ad-based)
     await supabase.from("credit_tx").insert({
       idempotency_key,
       user_id: user.id,
-      kind: "replay_story",
-      delta: -10,
+      kind: "replay_story_ad",
+      delta: 0,
       ref: { story_id },
     });
     await supabase.from("credits_ledger").insert({
       user_id: user.id,
-      delta: -10,
-      reason: "replay_story",
+      delta: 0,
+      reason: "replay_story_ad",
       meta: { story_id },
     });
 
-    // Get original story config
+    // Get story
     const { data: story } = await supabase.from("stories").select("*").eq("id", story_id).single();
     if (!story) throw new Error("Story not found");
     const config = (story.config as any) || {};
 
-    // Create new session
+    const { data: profile } = await supabase.from("profiles").select("plan").eq("user_id", user.id).single();
+
+    // Create session (no credit deduction)
     const { data: session, error: sessErr } = await supabase.from("story_sessions").insert({
       story_id: story.id,
       user_id: user.id,
@@ -122,24 +97,23 @@ serve(async (req) => {
         character_bible: config.character_bible,
         history: [],
       },
-      ad_required: false,
+      ad_required: profile?.plan === "free",
     }).select().single();
     if (sessErr) throw sessErr;
 
-    // Update daily replay count (session confirmed)
+    // Increment daily count (session confirmed)
     if (dailyLimit) {
       await supabase.from("replay_daily_limits").update({ count: currentCount + 1 }).eq("user_id", user.id).eq("day", today);
     } else {
       await supabase.from("replay_daily_limits").insert({ user_id: user.id, day: today, count: 1 });
     }
 
-    // Generate first scene via AI
-    const session_id = session.id;
+    // Generate first scene
     const choicesCount = config.choices_count || 2;
     let sceneText = `${config.name || "주인공"}의 새로운 이야기가 시작됩니다...`;
     const choicesList: any[] = [];
-
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+
     if (LOVABLE_API_KEY) {
       try {
         const genreDescMap: Record<string, string> = {
@@ -207,14 +181,14 @@ serve(async (req) => {
     }
 
     await supabase.from("story_nodes").insert({
-      session_id, step: 0, variant: "main", scene_text: sceneText, choices: choicesList,
+      session_id: session.id, step: 0, variant: "main", scene_text: sceneText, choices: choicesList,
     });
 
-    return new Response(JSON.stringify({ session_id }), {
+    return new Response(JSON.stringify({ session_id: session.id }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
-    console.error("replay error:", e);
+    console.error("complete-replay-after-ad error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
