@@ -96,7 +96,22 @@ serve(async (req) => {
     if (authError || !user) throw new Error("Unauthorized");
 
     const body = await req.json();
-    const { genre, name, gender, protagonist, keywords, customStory, duration_min, choices_count, endings_count } = body;
+    const { genre, name, gender, protagonist, keywords, customStory, duration_min, choices_count, endings_count, idempotency_key } = body;
+
+    // Idempotency check
+    if (idempotency_key) {
+      const { data: existingTx } = await supabase
+        .from("credit_tx")
+        .select("idempotency_key, ref")
+        .eq("idempotency_key", idempotency_key)
+        .maybeSingle();
+      if (existingTx) {
+        const ref = existingTx.ref as any;
+        return new Response(JSON.stringify({ session_id: ref?.session_id, duplicate: true }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
 
     const { data: profile } = await supabase
       .from("profiles")
@@ -122,6 +137,7 @@ serve(async (req) => {
     await supabase.from("credits_ledger").insert({
       user_id: user.id, delta: -10, reason: "create_session", meta: { genre },
     });
+    // Record credit_tx for idempotency (session_id added after session creation)
 
     // Create story
     const { data: story, error: storyErr } = await supabase.from("stories").insert({
@@ -224,6 +240,17 @@ serve(async (req) => {
       ad_required: adRequired,
     }).select().single();
     if (sessErr) throw sessErr;
+
+    // Record credit_tx with idempotency_key
+    if (idempotency_key) {
+      await supabase.from("credit_tx").insert({
+        idempotency_key,
+        user_id: user.id,
+        kind: "create_session",
+        delta: -10,
+        ref: { story_id: story.id, session_id: session.id },
+      });
+    }
 
     // Generate first scene
     let sceneText = "";
