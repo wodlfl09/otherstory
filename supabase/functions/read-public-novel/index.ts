@@ -116,7 +116,14 @@ serve(async (req) => {
       expires_at: expiresAt,
     });
 
-    return new Response(JSON.stringify({ access: true }), {
+    // Fetch novel nodes for reading
+    const { data: nodes } = await supabase
+      .from("story_nodes")
+      .select("step, scene_text, image_url, choices")
+      .eq("session_id", novel.session_id)
+      .order("step", { ascending: true });
+
+    return new Response(JSON.stringify({ access: true, novel, nodes: nodes || [] }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

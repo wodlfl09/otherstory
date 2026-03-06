@@ -241,6 +241,17 @@ serve(async (req) => {
     }).select().single();
     if (sessErr) throw sessErr;
 
+    // Record credit_tx with idempotency_key
+    if (idempotency_key) {
+      await supabase.from("credit_tx").insert({
+        idempotency_key,
+        user_id: user.id,
+        kind: "create_session",
+        delta: -10,
+        ref: { story_id: story.id, session_id: session.id },
+      });
+    }
+
     // Generate first scene
     let sceneText = "";
     let imageBrief = `${genre} opening scene, mysterious atmosphere, ${name}`;
