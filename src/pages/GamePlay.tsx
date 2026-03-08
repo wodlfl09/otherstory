@@ -71,6 +71,22 @@ export default function GamePlay() {
     if (!sess) { toast.error("세션을 찾을 수 없습니다."); return; }
     setSession(sess);
 
+    // Check if generation is still in progress for this story
+    const { data: pendingJob } = await supabase.from("generation_jobs")
+      .select("id, status")
+      .eq("story_id", sess.story_id)
+      .not("status", "eq", "completed")
+      .not("status", "eq", "failed")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (pendingJob) {
+      toast.info("아직 게임 생성이 완료되지 않았습니다.");
+      navigate(`/generating/${pendingJob.id}`);
+      return;
+    }
+
     const { data: storyData } = await supabase.from("stories").select("title").eq("id", sess.story_id).single();
     if (storyData) setStoryTitle(storyData.title);
 
