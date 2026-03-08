@@ -196,7 +196,7 @@ export default function ShareCard({
     }
   };
 
-  const handleShare = async (platform?: "twitter") => {
+  const handleShare = async (platform?: "twitter" | "kakao") => {
     setGenerating(true);
     try {
       const blob = await generateImage();
@@ -205,6 +205,13 @@ export default function ShareCard({
       if (platform === "twitter") {
         const encoded = encodeURIComponent(shareText);
         window.open(`https://twitter.com/intent/tweet?text=${encoded}`, "_blank");
+        return;
+      }
+
+      if (platform === "kakao") {
+        const kakaoText = `🎬 ${storyTitle} 클리어!\n${dominantIcon} 성향: ${dominantLabel}\n${endingMessage}`;
+        const encoded = encodeURIComponent(kakaoText);
+        window.open(`https://sharer.kakao.com/talk/friends/picker/link?url=${encodeURIComponent(window.location.href)}&text=${encoded}`, "_blank");
         return;
       }
 
