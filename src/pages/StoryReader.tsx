@@ -169,9 +169,9 @@ export default function StoryReader() {
 
         {/* Scene navigation sidebar + main content */}
         {nodes.length > 0 ? (
-          <div className="flex gap-4">
+          <div>
             {/* Mobile scene selector */}
-            <div className="md:hidden mb-4 w-full">
+            <div className="md:hidden mb-4">
               <select
                 value={currentStep}
                 onChange={(e) => setCurrentStep(Number(e.target.value))}
