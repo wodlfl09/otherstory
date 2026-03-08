@@ -51,7 +51,7 @@ export default function Library() {
   const loadLibrary = async () => {
     const { data } = await supabase
       .from("library_items")
-      .select("id, pinned, created_at, story:stories(id, title, genre, cover_url, protagonist_name, synopsis, created_at)")
+      .select("id, pinned, created_at, story:stories(id, title, genre, cover_url, protagonist_name, synopsis, created_at, is_public)")
       .eq("user_id", user!.id)
       .order("pinned", { ascending: false })
       .order("created_at", { ascending: false });
