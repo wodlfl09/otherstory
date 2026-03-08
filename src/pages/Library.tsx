@@ -184,6 +184,23 @@ export default function Library() {
     <div className="min-h-screen bg-background">
       <Navbar />
       <div className="container mx-auto max-w-5xl px-4 pt-24 pb-16">
+        {/* Active generation banner */}
+        {activeJob && (
+          <div
+            className="mb-6 cursor-pointer rounded-2xl border border-primary/30 bg-card/95 backdrop-blur-md shadow-lg p-4 space-y-2"
+            onClick={() => navigate(`/generating/${activeJob.id}`)}
+          >
+            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <Sparkles className="h-4 w-4 text-primary animate-pulse" />
+              게임 생성 중 — 터치하여 확인
+            </div>
+            <Progress value={activeJob.progress_percent || 0} className="h-2" />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>{activeJob.current_stage}</span>
+              <span>{activeJob.progress_percent || 0}%</span>
+            </div>
+          </div>
+        )}
         <div className="mb-8 flex items-center justify-between">
           <h1 className="font-display text-2xl font-bold text-foreground">내 스토리 라이브러리</h1>
           <span className="text-sm text-muted-foreground">
