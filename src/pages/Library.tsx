@@ -207,7 +207,10 @@ export default function Library() {
                   </AspectRatio>
                   <div className="p-4">
                     <h3 className="font-medium text-foreground line-clamp-1">{item.story?.title || "제목 없음"}</h3>
-                    <div className="mt-1 flex items-center gap-2">
+                    <div className="mt-1 flex items-center gap-2 flex-wrap">
+                      {item.story?.is_public && (
+                        <Badge className="bg-primary/20 text-primary border-primary/30 text-[10px]">공개됨</Badge>
+                      )}
                       <Badge variant="outline" className="text-[10px]">
                         {GENRE_LABELS[item.story?.genre] || item.story?.genre}
                       </Badge>
