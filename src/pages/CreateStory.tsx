@@ -205,6 +205,30 @@ export default function CreateStory() {
           feature={upgradeModal.feature}
           requiredPlan={upgradeModal.plan}
         />
+
+        {/* Credit insufficient modal */}
+        <Dialog open={creditModal} onOpenChange={setCreditModal}>
+          <DialogContent className="max-w-sm bg-card border-border">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-foreground">
+                <Coins className="h-5 w-5 text-primary" />
+                크레딧 부족
+              </DialogTitle>
+              <DialogDescription>
+                스토리를 시작하려면 <span className="font-bold text-foreground">10 크레딧</span>이 필요합니다.
+                현재 잔액: <span className="font-bold text-primary">{profile?.credits ?? 0} 크레딧</span>
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col gap-2 pt-2">
+              <Button onClick={() => { setCreditModal(false); navigate("/pricing"); }} className="w-full">
+                크레딧 충전하기
+              </Button>
+              <Button variant="outline" onClick={() => setCreditModal(false)} className="w-full">
+                닫기
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
