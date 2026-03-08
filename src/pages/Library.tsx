@@ -24,6 +24,7 @@ interface LibraryEntry {
     created_at: string;
   };
   fallbackCover?: string | null;
+  lastPlayedAt?: string | null;
 }
 
 const GENRE_LABELS: Record<string, string> = {
