@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { BookOpen, Trash2, RotateCcw, Share2, Loader2 } from "lucide-react";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { toast } from "sonner";
+import PublishModal from "@/components/PublishModal";
 
 interface LibraryEntry {
   id: string;
