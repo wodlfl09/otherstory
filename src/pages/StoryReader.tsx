@@ -264,6 +264,36 @@ export default function StoryReader() {
           </div>
         )}
       </div>
+
+      {/* Publish Modals */}
+      {storyId && (
+        <PublishModal
+          open={publishGameOpen}
+          onOpenChange={setPublishGameOpen}
+          mode="game"
+          storyId={storyId}
+          defaults={{
+            title: story?.title,
+            synopsis: story?.synopsis,
+            coverUrl: story?.cover_url,
+            protagonistName: story?.protagonist_name,
+          }}
+        />
+      )}
+      {storyId && sessionId && (
+        <PublishModal
+          open={publishNovelOpen}
+          onOpenChange={setPublishNovelOpen}
+          mode="novel"
+          storyId={storyId}
+          sessionId={sessionId}
+          defaults={{
+            title: story?.title,
+            synopsis: story?.synopsis,
+            coverUrl: story?.cover_url,
+          }}
+        />
+      )}
     </div>
   );
 }
