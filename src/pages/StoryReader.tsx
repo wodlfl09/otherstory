@@ -73,7 +73,7 @@ export default function StoryReader() {
         .order("created_at", { ascending: false })
         .limit(1);
       if (latestSessions?.length) {
-        sessionId = latestSessions[0].id;
+        loadedSessionId = latestSessions[0].id;
         setSessionFinished(latestSessions[0].finished);
       }
     }
