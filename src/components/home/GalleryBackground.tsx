@@ -59,7 +59,7 @@ export default function GalleryBackground() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none select-none" aria-hidden="true">
       {/* The masonry grid fills the viewport */}
-      <div className="gallery-masonry gallery-bg-mode h-full w-full opacity-70">
+      <div className="gallery-masonry h-full w-full opacity-70">
         {items.map((item, i) => (
           <MotionCard
             key={`${item.type}-${item.id}`}
