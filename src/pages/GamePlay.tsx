@@ -222,17 +222,25 @@ export default function GamePlay() {
           <div className="space-y-6 opacity-0 animate-fade-in">
             {/* 16:9 Scene Image */}
             {node.image_url && (
-              <AspectRatio ratio={16 / 9} className="overflow-hidden rounded-xl border border-border shadow-lg">
-                <img
-                  src={node.image_url}
-                  alt={`장면 ${node.step + 1} 삽화`}
-                  className="h-full w-full object-cover"
+              motionComic ? (
+                <MotionComic
+                  imageUrl={node.image_url}
+                  genre={(session?.state as any)?.genre || "sf"}
+                  step={node.step}
                 />
-              </AspectRatio>
+              ) : (
+                <AspectRatio ratio={16 / 9} className="overflow-hidden rounded-xl border border-border shadow-lg">
+                  <img
+                    src={node.image_url}
+                    alt={`장면 ${node.step + 1} 삽화`}
+                    className="h-full w-full object-cover"
+                  />
+                </AspectRatio>
+              )
             )}
 
             {/* Scene Text */}
-            <div className="rounded-xl border border-border bg-card p-6 md:p-8">
+            <div className={`rounded-xl border border-border bg-card p-6 md:p-8 ${motionComic ? "motion-comic-text-reveal" : ""}`}>
               <p className="whitespace-pre-wrap leading-[1.9] text-foreground text-[15px]">
                 {node.scene_text}
               </p>
@@ -240,7 +248,7 @@ export default function GamePlay() {
 
             {/* Choices */}
             {node.choices && node.choices.length > 0 && (
-              <div className="space-y-3">
+              <div className={`space-y-3 ${motionComic ? "motion-comic-text-reveal-delay" : ""}`}>
                 {node.choices.map((choice, i) => {
                   const colorClass = attitudeColors[choice.attitude] || attitudeColors.neutral;
                   const icon = attitudeIcons[choice.attitude] || "🤔";
