@@ -65,6 +65,10 @@ serve(async (req) => {
     const body = await req.json();
     const { genre, name, gender, protagonist, keywords, customStory, duration_min, choices_count, endings_count, idempotency_key } = body;
 
+    // Validate genre restriction
+    const allowedGenres = ["horror", "mystery", "action"];
+    if (!allowedGenres.includes(genre)) throw new Error("현재 공포, 미스터리, 스릴러 장르만 지원합니다.");
+
     if (idempotency_key) {
       const { data: existingTx } = await supabase.from("credit_tx").select("idempotency_key, ref").eq("idempotency_key", idempotency_key).maybeSingle();
       if (existingTx) {
@@ -101,8 +105,8 @@ serve(async (req) => {
           body: JSON.stringify({
             model: "google/gemini-2.5-flash-lite",
             messages: [
-              { role: "system", content: "Generate a character bible for consistent image generation. Output JSON only." },
-              { role: "user", content: `Genre: ${genre}. Character: ${name} (${gender}). ${protagonist ? `Description: ${protagonist}` : ""}. Create a visual character bible.` },
+              { role: "system", content: "Generate a character bible for consistent dark cinematic image generation. Output JSON only." },
+              { role: "user", content: `Genre: ${genre} (dark thriller/horror tone). Character: ${name} (${gender}). ${protagonist ? `Description: ${protagonist}` : ""}. Create a visual character bible with dark, cinematic semi-realistic aesthetic.` },
             ],
             tools: [{ type: "function", function: { name: "create_character_bible", description: "Create character visual description", parameters: { type: "object", properties: { name: { type: "string" }, gender: { type: "string" }, appearance: { type: "object", properties: { hair: { type: "string" }, eyes: { type: "string" }, build: { type: "string" }, clothing: { type: "string" }, distinctive_features: { type: "string" } } } }, required: ["name", "gender", "appearance"] } } }],
             tool_choice: { type: "function", function: { name: "create_character_bible" } },
@@ -116,7 +120,6 @@ serve(async (req) => {
       } catch (err) { console.error("Character bible error:", err); }
     }
 
-    // Create story with character_bible in config
     const storyConfig = { name, gender, protagonist, keywords, customStory, duration_min, choices_count, endings_count, total_steps: totalSteps, character_bible: characterBible };
     const { data: story, error: storyErr } = await supabase.from("stories").insert({
       user_id: user.id, title: `${genre} 모험 - ${name}`, genre,
@@ -124,7 +127,6 @@ serve(async (req) => {
     }).select().single();
     if (storyErr) throw storyErr;
 
-    // Auto-save to library
     const { count: libCount } = await supabase.from("library_items").select("id", { count: "exact", head: true }).eq("user_id", user.id);
     const maxLib = profile.plan === "pro" ? Infinity : profile.plan === "basic" ? 9 : 3;
     if ((libCount ?? 0) < maxLib) await supabase.from("library_items").insert({ user_id: user.id, story_id: story.id });
@@ -142,18 +144,18 @@ serve(async (req) => {
       await supabase.from("credit_tx").insert({ idempotency_key, user_id: user.id, kind: "create_session", delta: -10, ref: { story_id: story.id, session_id: session.id } });
     }
 
-    // Build graph and generate all content via AI
+    // Build graph and generate all content via AI — GAME-STYLE short text
     const graph = buildGraph(totalSteps, choices_count, endings_count);
     let generatedNodes: any[] = [];
 
     if (LOVABLE_API_KEY) {
       try {
         const genreDescMap: Record<string, string> = {
-          sf: "사이버펑크/우주 SF", fantasy: "하이 판타지", mystery: "하드보일드 추리",
-          action: "고속 액션 스릴러", horror: "심리 공포", romance: "감성 로맨스",
-          comic: "유쾌한 코미디", martial: "무협/검협", adult: "성인 드라마",
+          horror: "심리 공포/서바이벌 호러",
+          mystery: "하드보일드 미스터리/추리",
+          action: "극한 스릴러/서스펜스",
         };
-        const genreDesc = genreDescMap[genre] || genre;
+        const genreDesc = genreDescMap[genre] || "다크 스릴러";
 
         const nodeDescs = graph.map(n => {
           if (n.is_ending) return `"${n.node_id}": ${n.variant_desc} (선택지 없음)`;
@@ -161,8 +163,13 @@ serve(async (req) => {
           return `"${n.node_id}": ${n.variant_desc} [${conns}]`;
         }).join("\n");
 
-        const systemPrompt = `당신은 ${genreDesc} 장르의 베스트셀러 웹소설 작가입니다.
-완전한 분기형 인터랙티브 스토리의 모든 장면을 한번에 생성하세요.
+        const systemPrompt = `당신은 ${genreDesc} 장르의 시네마틱 게임 시나리오 작가입니다.
+선택형 시네마 스토리 게임의 모든 장면을 생성하세요.
+
+[핵심 원칙]
+- 이것은 "읽는 소설"이 아니라 "판단하는 게임"입니다
+- 장면은 짧고 강렬하게. 긴장감과 선택의 무게감이 핵심
+- 플레이어가 매 장면에서 "내가 뭘 해야 하지?"를 느껴야 합니다
 
 주인공: ${name} (${gender === "male" ? "남성" : "여성"})
 ${protagonist ? `설정: ${protagonist}` : ""}
@@ -172,15 +179,29 @@ ${customStory ? `세계관: ${customStory}` : ""}
 스토리 구조 (총 ${graph.length}개 노드):
 ${nodeDescs}
 
-규칙:
-1. 각 장면 scene_text: 한국어 400~800자, 과거형 서술, 오감 묘사
-2. 비엔딩 노드에 ${choices_count}개 선택지 (15-30자, 구체적 행동)
-3. 선택지 태도: positive(적극적), negative(강경한), avoidance(회피), neutral
-4. 변형 장면은 이전 선택의 결과를 반영한 다른 내용으로 작성
-5. 엔딩은 여운 있는 결말
-6. image_brief: 영어 30단어 이내 삽화 묘사
-7. next_node_id는 위 구조대로 정확히 지정
-8. 첫 문장부터 강렬한 훅`;
+[장면 텍스트 규칙 — 중요!]
+1. 한국어 220~350자 (3~5문장). 절대 이 범위를 넘기지 마세요.
+2. 설명이 아닌 "장면"을 보여주세요. 카메라가 비추는 것처럼.
+3. 과거형 서술체 ("~했다", "~였다")
+4. 매 장면 마지막은 선택의 갈림길 — 긴장감 극대화
+5. 금지: 장황한 배경 설명, 내면 독백, 진부한 표현
+6. 필수: 소리/촉감/시각 중 최소 1가지 감각 묘사
+
+[선택지 규칙]
+1. ${choices_count}개, 한국어 8~20자
+2. 구체적 행동 동사로 시작 (예: "문을 열다", "도망치다", "총을 겨누다")
+3. 각 선택지가 명확히 다른 결과를 암시
+4. 태도: positive(적극적/대결), negative(강경한/공격적), avoidance(회피/도주)
+
+[이미지 규칙]
+1. image_brief: 영어 25단어 이내
+2. 다크 시네마틱 반실사 톤 (dark cinematic semi-realistic, dramatic lighting, moody atmosphere)
+3. 핵심 장면(n0, 엔딩)은 특히 강렬한 구도
+
+[엔딩 규칙]
+1. 선택지 없음
+2. 짧고 여운 있는 결말 (200~300자)
+3. 플레이어의 선택 경로가 반영된 결과`;
 
         const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
@@ -189,7 +210,7 @@ ${nodeDescs}
             model: "google/gemini-2.5-flash",
             messages: [
               { role: "system", content: systemPrompt },
-              { role: "user", content: `위 구조에 맞는 전체 ${graph.length}개 노드를 생성하세요.` },
+              { role: "user", content: `위 구조에 맞는 전체 ${graph.length}개 노드를 생성하세요. 장면당 220~350자, 선택지 8~20자를 엄격히 지켜주세요.` },
             ],
             tools: [{
               type: "function",
@@ -205,16 +226,16 @@ ${nodeDescs}
                         type: "object",
                         properties: {
                           node_id: { type: "string" },
-                          scene_text: { type: "string", description: "400-800자 한국어 장면" },
-                          image_brief: { type: "string", description: "영어 30단어 이내" },
+                          scene_text: { type: "string", description: "220-350자 한국어 장면" },
+                          image_brief: { type: "string", description: "영어 25단어 이내, dark cinematic semi-realistic" },
                           choices: {
                             type: "array",
                             items: {
                               type: "object",
                               properties: {
                                 id: { type: "string" },
-                                label: { type: "string", description: "한국어 15-30자" },
-                                attitude: { type: "string", enum: ["positive", "negative", "avoidance", "neutral"] },
+                                label: { type: "string", description: "한국어 8-20자, 행동 동사" },
+                                attitude: { type: "string", enum: ["positive", "negative", "avoidance"] },
                                 next_node_id: { type: "string" },
                               },
                               required: ["id", "label", "attitude", "next_node_id"],
@@ -246,43 +267,30 @@ ${nodeDescs}
       } catch (aiErr) { console.error("AI graph error:", aiErr); }
     }
 
-    // Build node map from AI output
     const generatedMap = new Map(generatedNodes.map((n: any) => [n.node_id, n]));
-
-    // Prepare all nodes for batch insert
     const nodesToInsert = graph.map(gn => {
       const gen = generatedMap.get(gn.node_id);
       const sceneText = gen?.scene_text || `${name}의 이야기가 계속됩니다...`;
-      const imageBrief = gen?.image_brief || `${genre} scene`;
+      const imageBrief = gen?.image_brief || `dark cinematic ${genre} scene, dramatic lighting`;
 
       let choices = null;
       if (!gn.is_ending) {
         if (gen?.choices && gen.choices.length >= choices_count) {
           choices = gen.choices.slice(0, choices_count).map((c: any, i: number) => ({
-            id: c.id || `c${i}`,
-            label: c.label || `선택지 ${i + 1}`,
-            attitude: c.attitude || "neutral",
-            next_node_id: gn.next_node_ids[i] || gn.next_node_ids[0],
+            id: c.id || `c${i}`, label: c.label || `선택지 ${i + 1}`,
+            attitude: c.attitude || "neutral", next_node_id: gn.next_node_ids[i] || gn.next_node_ids[0],
           }));
         } else {
           choices = gn.next_node_ids.map((nid, i) => ({
-            id: `c${i}`,
-            label: gen?.choices?.[i]?.label || `선택지 ${i + 1}`,
-            attitude: ["positive", "negative", "avoidance"][i] || "neutral",
-            next_node_id: nid,
+            id: `c${i}`, label: gen?.choices?.[i]?.label || `선택지 ${i + 1}`,
+            attitude: ["positive", "negative", "avoidance"][i] || "neutral", next_node_id: nid,
           }));
         }
       }
 
       return {
-        story_id: story.id,
-        node_id: gn.node_id,
-        step: gn.step,
-        variant: "main",
-        scene_text: sceneText,
-        image_prompt: imageBrief,
-        image_url: null,
-        choices,
+        story_id: story.id, node_id: gn.node_id, step: gn.step, variant: "main",
+        scene_text: sceneText, image_prompt: imageBrief, image_url: null, choices,
       };
     });
 

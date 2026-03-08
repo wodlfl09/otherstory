@@ -35,23 +35,13 @@ serve(async (req) => {
     const config = (story.config as any) || {};
     const characterBible = config.character_bible;
     const genre = story.genre;
-    const imageBrief = node.image_prompt || `${genre} scene`;
+    const imageBrief = node.image_prompt || `dark cinematic ${genre} scene`;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("No API key");
 
-    const styleHints: Record<string, string> = {
-      sf: "cinematic sci-fi cyberpunk lighting, neon glow, futuristic city",
-      fantasy: "epic fantasy painting, dramatic lighting, magical atmosphere",
-      mystery: "noir atmosphere, dark shadows, moody detective scene",
-      action: "dynamic action shot, motion blur, intense cinematic",
-      horror: "dark horror atmosphere, eerie shadows, unsettling mood",
-      romance: "soft warm lighting, dreamy bokeh, emotional scene",
-      comic: "vibrant colorful scene, comedic expression, lively atmosphere",
-      martial: "wuxia ink wash style, martial arts pose, flowing robes",
-      adult: "mature dramatic scene, cinematic noir lighting, sophisticated",
-    };
-    const styleHint = styleHints[genre] || "cinematic scene";
+    // Unified dark cinematic semi-realistic style for all genres
+    const styleHint = "dark cinematic semi-realistic, dramatic chiaroscuro lighting, moody atmosphere, film grain, desaturated color palette, deep shadows, volumetric lighting";
 
     let charDesc = "";
     if (characterBible) {
@@ -59,7 +49,7 @@ serve(async (req) => {
       charDesc = `Main character: ${characterBible.name || ""}, ${a.hair || ""} hair, ${a.eyes || ""} eyes, ${a.build || ""} build, wearing ${a.clothing || ""}. ${a.distinctive_features || ""}. `;
     }
 
-    const prompt = `Generate a 16:9 widescreen illustration: ${styleHint}. ${charDesc}${imageBrief}. High quality, detailed, no text or watermarks.`;
+    const prompt = `Generate a 16:9 widescreen illustration in ${styleHint} style. ${charDesc}${imageBrief}. High quality, photorealistic, no text or watermarks, no anime style.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -95,7 +85,6 @@ serve(async (req) => {
     await supabase.from("story_nodes").update({ image_url: imageUrl })
       .eq("story_id", story_id).eq("node_id", node_id);
 
-    // Also set story cover if this is the root node
     if (node_id === "n0") {
       await supabase.from("stories").update({ cover_url: imageUrl }).eq("id", story_id);
     }
