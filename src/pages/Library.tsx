@@ -210,7 +210,7 @@ export default function Library() {
                         )}
                         재진행
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={(e) => handlePublishGame(e, item.story?.id)} className="gap-1 text-xs">
+                      <Button variant="ghost" size="sm" onClick={(e) => openPublishModal(e, item)} className="gap-1 text-xs">
                         <Share2 className="h-3.5 w-3.5" />공개
                       </Button>
                       <Button variant="ghost" size="sm" onClick={(e) => removeItem(e, item.id)} className="ml-auto text-muted-foreground hover:text-destructive">
