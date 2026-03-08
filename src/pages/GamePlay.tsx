@@ -230,6 +230,25 @@ export default function GamePlay() {
       ? Math.round((new Date(session.updated_at).getTime() - new Date(session.created_at).getTime()) / 60000)
       : null;
 
+    const chosenChoices = (session.state as any)?.chosen_choices || [];
+    const attitudeCounts = chosenChoices.reduce((acc: Record<string, number>, c: any) => {
+      const att = c.attitude || "neutral";
+      acc[att] = (acc[att] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    const total = chosenChoices.length || 1;
+    const tendencies = [
+      { key: "positive", label: "공격적", icon: "⚔️", color: "bg-green-500" },
+      { key: "negative", label: "방어적", icon: "🛡️", color: "bg-destructive" },
+      { key: "avoidance", label: "회피적", icon: "🚪", color: "bg-yellow-500" },
+      { key: "neutral", label: "신중함", icon: "🤔", color: "bg-primary" },
+    ].filter(t => (attitudeCounts[t.key] || 0) > 0);
+
+    const dominant = tendencies.reduce((a, b) =>
+      (attitudeCounts[a.key] || 0) >= (attitudeCounts[b.key] || 0) ? a : b,
+      tendencies[0]
+    );
+
     return (
       <div className="min-h-screen bg-background">
         <div className="max-w-4xl mx-auto px-4 pt-8 pb-16">
@@ -248,7 +267,7 @@ export default function GamePlay() {
           </div>
 
           {/* Play stats */}
-          <div className="grid grid-cols-3 gap-3 mb-8">
+          <div className="grid grid-cols-3 gap-3 mb-6">
             <div className="rounded-xl bg-card/50 backdrop-blur-sm border border-border p-4 text-center">
               <p className="text-lg font-bold text-primary">{session.step || 0}</p>
               <p className="text-[10px] text-muted-foreground mt-0.5">총 선택</p>
@@ -262,6 +281,31 @@ export default function GamePlay() {
               <p className="text-[10px] text-muted-foreground mt-0.5">소요 시간</p>
             </div>
           </div>
+
+          {/* Tendency analysis */}
+          {tendencies.length > 0 && (
+            <div className="rounded-xl bg-card/50 backdrop-blur-sm border border-border p-5 mb-8">
+              <p className="text-xs font-bold text-foreground mb-3">
+                당신의 플레이 성향: <span className="text-primary">{dominant?.icon} {dominant?.label}</span>
+              </p>
+              <div className="space-y-2.5">
+                {tendencies.map(t => {
+                  const count = attitudeCounts[t.key] || 0;
+                  const pct = Math.round((count / total) * 100);
+                  return (
+                    <div key={t.key} className="flex items-center gap-2">
+                      <span className="text-sm w-5 shrink-0">{t.icon}</span>
+                      <span className="text-[11px] text-muted-foreground w-14 shrink-0">{t.label}</span>
+                      <div className="flex-1 h-2 rounded-full bg-secondary overflow-hidden">
+                        <div className={cn("h-full rounded-full transition-all duration-700", t.color)} style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className="text-[11px] font-bold text-foreground w-10 text-right">{pct}%</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div className="flex gap-3">
             <Button variant="outline" className="flex-1" onClick={() => navigate("/home")}>

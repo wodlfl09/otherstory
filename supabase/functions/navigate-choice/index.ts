@@ -46,7 +46,7 @@ serve(async (req) => {
     const visitedNodes = state.visited_nodes || [];
     const chosenChoices = state.chosen_choices || [];
     visitedNodes.push(currentNodeId);
-    chosenChoices.push({ node_id: currentNodeId, choice_id, choice_label: selectedChoice.label });
+    chosenChoices.push({ node_id: currentNodeId, choice_id, choice_label: selectedChoice.label, attitude: selectedChoice.attitude || "neutral" });
 
     await supabase.from("story_sessions").update({
       current_node_id: nextNodeId,
