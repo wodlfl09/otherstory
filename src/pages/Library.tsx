@@ -48,6 +48,19 @@ export default function Library() {
   useEffect(() => {
     if (!user) return;
     loadLibrary();
+    // Check for active generation jobs
+    const checkActiveJobs = async () => {
+      const { data } = await supabase
+        .from("generation_jobs")
+        .select("id, status, progress_percent, current_stage, eta_seconds")
+        .eq("user_id", user.id)
+        .not("status", "in", '("completed","failed")')
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      setActiveJob(data);
+    };
+    checkActiveJobs();
   }, [user]);
 
   const loadLibrary = async () => {
