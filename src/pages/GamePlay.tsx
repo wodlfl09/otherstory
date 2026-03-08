@@ -29,6 +29,10 @@ export default function GamePlay() {
   const [choosing, setChoosing] = useState(false);
   const [showAd, setShowAd] = useState(false);
   const [adTimer, setAdTimer] = useState(5);
+  const [motionComic, setMotionComic] = useState(() => {
+    const saved = localStorage.getItem("motion-comic");
+    return saved !== null ? saved === "true" : true;
+  });
 
   useEffect(() => {
     loadCurrentScene();
