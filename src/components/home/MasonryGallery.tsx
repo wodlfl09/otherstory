@@ -3,6 +3,19 @@ import { supabase } from "@/integrations/supabase/client";
 import MotionCard, { getMotionPreset, getRandomSpan } from "./MotionCard";
 import ExplorePreviewModal from "@/components/explore/ExplorePreviewModal";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
+
+const GENRE_FILTERS = [
+  { key: "all", label: "전체" },
+  { key: "sf", label: "SF" },
+  { key: "fantasy", label: "판타지" },
+  { key: "mystery", label: "추리" },
+  { key: "action", label: "액션" },
+  { key: "horror", label: "공포" },
+  { key: "romance", label: "로맨스" },
+  { key: "comic", label: "코믹" },
+  { key: "martial", label: "무협" },
+] as const;
 
 interface PublicGame {
   story_id: string;
