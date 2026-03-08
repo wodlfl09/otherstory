@@ -1,16 +1,58 @@
+import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import GenreGrid from "@/components/GenreCard";
 import MasonryGallery from "@/components/home/MasonryGallery";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Loader2, Sparkles } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 
 export default function Home() {
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const navigate = useNavigate();
+  const [activeJob, setActiveJob] = useState<any>(null);
+
+  // Check for active generation jobs
+  useEffect(() => {
+    if (!user) return;
+    const checkActiveJobs = async () => {
+      const { data } = await supabase
+        .from("generation_jobs")
+        .select("id, status, progress_percent, current_stage, eta_seconds")
+        .eq("user_id", user.id)
+        .not("status", "in", '("completed","failed")')
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      setActiveJob(data);
+    };
+    checkActiveJobs();
+  }, [user]);
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
+
+      {/* Active generation banner */}
+      {activeJob && (
+        <div
+          className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-md cursor-pointer"
+          onClick={() => navigate(`/generating/${activeJob.id}`)}
+        >
+          <div className="rounded-2xl border border-primary/30 bg-card/95 backdrop-blur-md shadow-lg p-4 space-y-2">
+            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <Sparkles className="h-4 w-4 text-primary animate-pulse" />
+              게임 생성 중 — 터치하여 확인
+            </div>
+            <Progress value={activeJob.progress_percent || 0} className="h-2" />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>{activeJob.current_stage}</span>
+              <span>{activeJob.progress_percent || 0}%</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Compact hero */}
       <section className="relative pt-16">
