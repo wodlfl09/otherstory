@@ -169,8 +169,23 @@ export default function StoryReader() {
 
         {/* Scene navigation sidebar + main content */}
         {nodes.length > 0 ? (
-          <div className="flex gap-4">
-            {/* Scene list (sidebar) */}
+          <div className="flex flex-col md:flex-row gap-4">
+            {/* Mobile scene selector */}
+            <div className="md:hidden mb-4">
+              <select
+                value={currentStep}
+                onChange={(e) => setCurrentStep(Number(e.target.value))}
+                className="w-full rounded-lg border border-border bg-secondary px-3 py-2 text-sm text-foreground"
+              >
+                {nodes.map((node, i) => (
+                  <option key={i} value={i}>
+                    #{node.step + 1} — {node.scene_text.slice(0, 40)}...
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Scene list (sidebar - desktop) */}
             <div className="hidden md:block w-48 shrink-0">
               <p className="text-xs font-medium text-muted-foreground mb-2">장면 목록</p>
               <ScrollArea className="h-[calc(100vh-14rem)]">

@@ -24,6 +24,7 @@ interface LibraryEntry {
     created_at: string;
   };
   fallbackCover?: string | null;
+  lastPlayedAt?: string | null;
 }
 
 const GENRE_LABELS: Record<string, string> = {
@@ -55,6 +56,27 @@ export default function Library() {
       .order("created_at", { ascending: false });
 
     const entries = ((data as any) || []) as LibraryEntry[];
+
+    // Fetch last played time per story
+    const storyIdsAll = entries.map((e) => e.story?.id).filter(Boolean);
+    if (storyIdsAll.length > 0) {
+      const { data: sessions } = await supabase
+        .from("story_sessions")
+        .select("story_id, created_at")
+        .in("story_id", storyIdsAll)
+        .order("created_at", { ascending: false });
+      if (sessions) {
+        const lastPlayMap: Record<string, string> = {};
+        sessions.forEach((s) => {
+          if (!lastPlayMap[s.story_id]) lastPlayMap[s.story_id] = s.created_at;
+        });
+        entries.forEach((e) => {
+          if (e.story?.id && lastPlayMap[e.story.id]) {
+            e.lastPlayedAt = lastPlayMap[e.story.id];
+          }
+        });
+      }
+    }
 
     // For items without cover_url, try to fetch scene1 image
     const needsCover = entries.filter((e) => !e.story?.cover_url);
@@ -192,6 +214,11 @@ export default function Library() {
                         <span className="text-xs text-muted-foreground">{item.story.protagonist_name}</span>
                       )}
                     </div>
+                    {item.lastPlayedAt && (
+                      <p className="mt-1 text-[11px] text-muted-foreground">
+                        마지막 플레이: {new Date(item.lastPlayedAt).toLocaleDateString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                    )}
                     {item.story?.synopsis && (
                       <p className="mt-2 text-xs text-muted-foreground line-clamp-2">{item.story.synopsis}</p>
                     )}
