@@ -118,10 +118,10 @@ serve(async (req) => {
 
       await supabase.from("profiles").update({
         credits: targetProfile.credits + delta,
-      }).eq("user_id", target_user_id);
+      }).eq("user_id", resolvedUserId);
 
       await supabase.from("credits_ledger").insert({
-        user_id: target_user_id,
+        user_id: resolvedUserId,
         delta,
         reason: reason || `admin_adjust_by_${callerRole}`,
         meta: { admin_id: user.id },
