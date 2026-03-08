@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Share2, Twitter, Copy, Download, Check } from "lucide-react";
+import { Share2, Twitter, Copy, Download, Check, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 
 interface Tendency {
