@@ -97,6 +97,25 @@ export default function StoryReader() {
         })));
       }
     }
+
+    // Check published status
+    if (storyId) {
+      const { data: pg } = await supabase
+        .from("public_games")
+        .select("story_id")
+        .eq("story_id", storyId)
+        .maybeSingle();
+      setIsGamePublished(!!pg);
+    }
+    if (loadedSessionId) {
+      const { data: pn } = await supabase
+        .from("public_novels")
+        .select("id")
+        .eq("session_id", loadedSessionId)
+        .maybeSingle();
+      setIsNovelPublished(!!pn);
+    }
+
     setLoading(false);
   };
 
