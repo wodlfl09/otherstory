@@ -2,6 +2,10 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { toast } from "sonner";
 import { Film, ImageIcon, AlertTriangle, Shield, Clock, Brain, Search, ArrowLeft, Home } from "lucide-react";
@@ -48,6 +52,7 @@ export default function GamePlay() {
   const [showAd, setShowAd] = useState(false);
   const [adTimer, setAdTimer] = useState(5);
   const [imageLoading, setImageLoading] = useState(false);
+  const [exitTarget, setExitTarget] = useState<"back" | "home" | null>(null);
   const [feedback, setFeedback] = useState<ChoiceFeedback[] | null>(null);
   const [feedbackVisible, setFeedbackVisible] = useState(false);
   const [motionComic, setMotionComic] = useState(() => {
@@ -248,14 +253,14 @@ export default function GamePlay() {
       <div className="sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b border-border/50">
         <div className="max-w-4xl mx-auto px-4 py-2 flex items-center gap-2">
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => session?.finished ? navigate(-1) : setExitTarget("back")}
             className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
             aria-label="뒤로가기"
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
           <button
-            onClick={() => navigate("/home")}
+            onClick={() => session?.finished ? navigate("/home") : setExitTarget("home")}
             className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
             aria-label="홈으로"
           >
@@ -386,6 +391,24 @@ export default function GamePlay() {
           </div>
         )}
       </div>
+
+      {/* Exit confirmation dialog */}
+      <AlertDialog open={!!exitTarget} onOpenChange={(open) => !open && setExitTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>게임을 나가시겠습니까?</AlertDialogTitle>
+            <AlertDialogDescription>
+              현재 진행 상황은 저장되지만, 이 장면에서 다시 시작됩니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>계속 플레이</AlertDialogCancel>
+            <AlertDialogAction onClick={() => exitTarget === "home" ? navigate("/home") : navigate(-1)}>
+              나가기
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
