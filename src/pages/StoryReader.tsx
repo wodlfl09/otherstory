@@ -169,7 +169,7 @@ export default function StoryReader() {
 
         {/* Scene navigation sidebar + main content */}
         {nodes.length > 0 ? (
-          <div>
+          <div className="flex flex-col md:flex-row gap-4">
             {/* Mobile scene selector */}
             <div className="md:hidden mb-4">
               <select
