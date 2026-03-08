@@ -1,23 +1,26 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { toast } from "sonner";
-import { Film, X } from "lucide-react";
+import { Film, ImageIcon } from "lucide-react";
 import MotionComic from "@/components/MotionComic";
 
 interface Choice {
   id: string;
   label: string;
   attitude: string;
+  next_node_id: string;
 }
 
 interface StoryNode {
+  node_id: string;
   step: number;
   scene_text: string;
   image_url: string | null;
+  image_prompt: string | null;
   choices: Choice[] | null;
 }
 
@@ -29,6 +32,7 @@ export default function GamePlay() {
   const [choosing, setChoosing] = useState(false);
   const [showAd, setShowAd] = useState(false);
   const [adTimer, setAdTimer] = useState(5);
+  const [imageLoading, setImageLoading] = useState(false);
   const [motionComic, setMotionComic] = useState(() => {
     const saved = localStorage.getItem("motion-comic");
     return saved !== null ? saved === "true" : true;
@@ -51,25 +55,73 @@ export default function GamePlay() {
     if (!sess) { toast.error("세션을 찾을 수 없습니다."); return; }
     setSession(sess);
 
-    const { data: nodes } = await supabase
+    const currentNodeId = (sess as any).current_node_id || "n0";
+
+    // Try graph-based query first
+    const { data: graphNode } = await supabase
       .from("story_nodes")
       .select("*")
-      .eq("session_id", sessionId)
-      .eq("step", sess.step)
-      .limit(1);
+      .eq("story_id", sess.story_id)
+      .eq("node_id", currentNodeId)
+      .limit(1)
+      .single();
 
-    if (nodes && nodes.length > 0) {
-      const n = nodes[0];
-      const choices = n.choices as unknown;
-      setNode({
-        step: n.step,
-        scene_text: n.scene_text,
-        image_url: n.image_url,
+    if (graphNode) {
+      const choices = graphNode.choices as unknown;
+      const nodeData: StoryNode = {
+        node_id: graphNode.node_id || currentNodeId,
+        step: graphNode.step,
+        scene_text: graphNode.scene_text,
+        image_url: graphNode.image_url,
+        image_prompt: graphNode.image_prompt,
         choices: Array.isArray(choices) ? (choices as Choice[]) : null,
-      });
+      };
+      setNode(nodeData);
+
+      // Lazy image generation if no image
+      if (!graphNode.image_url && graphNode.image_prompt) {
+        generateNodeImage(sess.story_id, currentNodeId);
+      }
+    } else {
+      // Fallback for old sessions (session_id based)
+      const { data: nodes } = await supabase
+        .from("story_nodes")
+        .select("*")
+        .eq("session_id", sessionId)
+        .eq("step", sess.step)
+        .limit(1);
+
+      if (nodes && nodes.length > 0) {
+        const n = nodes[0];
+        const choices = n.choices as unknown;
+        setNode({
+          node_id: n.node_id || `step_${n.step}`,
+          step: n.step,
+          scene_text: n.scene_text,
+          image_url: n.image_url,
+          image_prompt: n.image_prompt,
+          choices: Array.isArray(choices) ? (choices as Choice[]) : null,
+        });
+      }
     }
     setLoading(false);
   };
+
+  const generateNodeImage = useCallback(async (storyId: string, nodeId: string) => {
+    setImageLoading(true);
+    try {
+      const { data } = await supabase.functions.invoke("generate-node-image", {
+        body: { story_id: storyId, node_id: nodeId },
+      });
+      if (data?.image_url) {
+        setNode(prev => prev && prev.node_id === nodeId ? { ...prev, image_url: data.image_url } : prev);
+      }
+    } catch (err) {
+      console.error("Image gen error:", err);
+    } finally {
+      setImageLoading(false);
+    }
+  }, []);
 
   const checkAdGate = () => {
     if (!session) return false;
@@ -88,14 +140,48 @@ export default function GamePlay() {
 
     setChoosing(true);
     try {
-      const { data, error } = await supabase.functions.invoke("choose-and-generate-next", {
-        body: { session_id: sessionId, choice_id: choiceId },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      await loadCurrentScene();
+      // Check if this is a graph-based node (has next_node_id in choices)
+      const isGraphBased = node?.choices?.some(c => c.next_node_id);
+
+      if (isGraphBased) {
+        // New graph-based navigation - no AI generation
+        const { data, error } = await supabase.functions.invoke("navigate-choice", {
+          body: { session_id: sessionId, choice_id: choiceId },
+        });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+
+        const nextNode: StoryNode = {
+          node_id: data.node.node_id,
+          step: data.node.step,
+          scene_text: data.node.scene_text,
+          image_url: data.node.image_url,
+          image_prompt: data.node.image_prompt,
+          choices: data.node.choices,
+        };
+        setNode(nextNode);
+        setSession((s: any) => s ? {
+          ...s,
+          step: s.step + 1,
+          current_node_id: data.node.node_id,
+          finished: data.finished,
+        } : s);
+
+        // Lazy image generation
+        if (!nextNode.image_url && nextNode.image_prompt) {
+          generateNodeImage(session.story_id, nextNode.node_id);
+        }
+      } else {
+        // Legacy: AI-based generation for old sessions
+        const { data, error } = await supabase.functions.invoke("choose-and-generate-next", {
+          body: { session_id: sessionId, choice_id: choiceId },
+        });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        await loadCurrentScene();
+      }
     } catch (err: any) {
-      toast.error(err.message || "다음 장면 생성에 실패했습니다.");
+      toast.error(err.message || "다음 장면 이동에 실패했습니다.");
     } finally {
       setChoosing(false);
     }
@@ -167,6 +253,8 @@ export default function GamePlay() {
     );
   }
 
+  const totalSteps = session?.duration_min === 10 ? 7 : session?.duration_min === 20 ? 13 : 19;
+
   return (
     <div className="min-h-screen">
       <Navbar />
@@ -194,9 +282,7 @@ export default function GamePlay() {
             <div className="h-1.5 flex-1 mx-4 rounded-full bg-secondary overflow-hidden">
               <div
                 className="h-full rounded-full bg-primary transition-all duration-500"
-                style={{
-                  width: `${Math.min(100, ((session.step || 0) / (session.duration_min === 10 ? 7 : session.duration_min === 20 ? 13 : 19)) * 100)}%`,
-                }}
+                style={{ width: `${Math.min(100, ((session.step || 0) / (totalSteps - 1)) * 100)}%` }}
               />
             </div>
             <button
@@ -211,7 +297,7 @@ export default function GamePlay() {
               title={motionComic ? "Motion Comic OFF" : "Motion Comic ON"}
             >
               <Film className="h-3.5 w-3.5" />
-              {motionComic ? "MC" : "MC"}
+              MC
             </button>
             <span className="ml-2">{session.duration_min}분</span>
           </div>
@@ -220,8 +306,8 @@ export default function GamePlay() {
         {/* Scene */}
         {node && (
           <div className="space-y-6 opacity-0 animate-fade-in">
-            {/* 16:9 Scene Image */}
-            {node.image_url && (
+            {/* Image */}
+            {node.image_url ? (
               motionComic ? (
                 <MotionComic
                   imageUrl={node.image_url}
@@ -230,14 +316,20 @@ export default function GamePlay() {
                 />
               ) : (
                 <AspectRatio ratio={16 / 9} className="overflow-hidden rounded-xl border border-border shadow-lg">
-                  <img
-                    src={node.image_url}
-                    alt={`장면 ${node.step + 1} 삽화`}
-                    className="h-full w-full object-cover"
-                  />
+                  <img src={node.image_url} alt={`장면 ${node.step + 1} 삽화`} className="h-full w-full object-cover" />
                 </AspectRatio>
               )
-            )}
+            ) : imageLoading ? (
+              <AspectRatio ratio={16 / 9} className="overflow-hidden rounded-xl border border-border shadow-lg bg-secondary">
+                <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-muted-foreground">
+                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <ImageIcon className="h-3.5 w-3.5" />
+                    삽화 생성 중...
+                  </div>
+                </div>
+              </AspectRatio>
+            ) : null}
 
             {/* Scene Text */}
             <div className={`rounded-xl border border-border bg-card p-6 md:p-8 ${motionComic ? "motion-comic-text-reveal" : ""}`}>
@@ -271,8 +363,7 @@ export default function GamePlay() {
             {choosing && (
               <div className="flex flex-col items-center justify-center gap-3 py-12 text-muted-foreground">
                 <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                <p className="text-sm">다음 장면을 생성하는 중...</p>
-                <p className="text-xs text-muted-foreground/60">AI가 삽화와 텍스트를 만들고 있습니다</p>
+                <p className="text-sm">다음 장면으로 이동 중...</p>
               </div>
             )}
           </div>
