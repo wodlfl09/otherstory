@@ -21,10 +21,11 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) throw new Error("Unauthorized");
 
-    const { type, story_id, session_id, title, synopsis } = await req.json();
+    const { type, story_id, session_id, title, synopsis, cover_url, protagonist_name } = await req.json();
 
     if (type === "game") {
-      // Verify ownership
+      if (!story_id) throw new Error("story_id required");
+
       const { data: story } = await supabase
         .from("stories")
         .select("*")
@@ -33,21 +34,48 @@ serve(async (req) => {
         .single();
       if (!story) throw new Error("Story not found or not owned");
 
-      // Check if already published
+      // Auto cover from first scene if not provided
+      let finalCover = cover_url || story.cover_url;
+      if (!finalCover) {
+        const { data: sessions } = await supabase
+          .from("story_sessions")
+          .select("id")
+          .eq("story_id", story_id)
+          .order("created_at", { ascending: false })
+          .limit(1);
+        if (sessions?.length) {
+          const { data: node } = await supabase
+            .from("story_nodes")
+            .select("image_url")
+            .eq("session_id", sessions[0].id)
+            .eq("step", 0)
+            .maybeSingle();
+          finalCover = node?.image_url || null;
+        }
+      }
+
+      // Update story metadata
+      await supabase.from("stories").update({
+        is_public: true,
+        synopsis: synopsis || story.synopsis,
+        cover_url: finalCover || story.cover_url,
+        protagonist_name: protagonist_name || story.protagonist_name,
+      }).eq("id", story_id);
+
+      // Upsert public_game
       const { data: existing } = await supabase
         .from("public_games")
         .select("story_id")
         .eq("story_id", story_id)
         .maybeSingle();
-      if (existing) throw new Error("이미 공개된 게임입니다.");
 
-      // Mark story as public
-      await supabase.from("stories").update({
-        is_public: true,
-        synopsis: synopsis || story.synopsis,
-      }).eq("id", story_id);
+      if (existing) {
+        // Already published — update is fine
+        return new Response(JSON.stringify({ success: true, type: "game", updated: true }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
 
-      // Insert public_game
       await supabase.from("public_games").insert({
         story_id,
         creator_id: user.id,
@@ -61,7 +89,6 @@ serve(async (req) => {
     if (type === "novel") {
       if (!session_id) throw new Error("session_id required for novel");
 
-      // Verify session is finished
       const { data: session } = await supabase
         .from("story_sessions")
         .select("*")
@@ -71,7 +98,6 @@ serve(async (req) => {
       if (!session) throw new Error("Session not found");
       if (!session.finished) throw new Error("완료된 세션만 소설로 공개할 수 있습니다.");
 
-      // Get story
       const { data: story } = await supabase
         .from("stories")
         .select("*")
@@ -79,26 +105,38 @@ serve(async (req) => {
         .single();
       if (!story) throw new Error("Story not found");
 
-      // Get cover from first node
-      const { data: firstNode } = await supabase
-        .from("story_nodes")
-        .select("image_url")
+      // Check duplicate
+      const { data: existingNovel } = await supabase
+        .from("public_novels")
+        .select("id")
         .eq("session_id", session_id)
-        .eq("step", 0)
         .maybeSingle();
+      if (existingNovel) throw new Error("이미 공개된 소설입니다.");
 
-      await supabase.from("public_novels").insert({
+      // Auto cover
+      let finalCover = cover_url || story.cover_url;
+      if (!finalCover) {
+        const { data: firstNode } = await supabase
+          .from("story_nodes")
+          .select("image_url")
+          .eq("session_id", session_id)
+          .eq("step", 0)
+          .maybeSingle();
+        finalCover = firstNode?.image_url || null;
+      }
+
+      const { data: novel } = await supabase.from("public_novels").insert({
         session_id,
         story_id: session.story_id,
         creator_id: user.id,
         title: title || story.title,
         synopsis: synopsis || story.synopsis,
-        cover_url: firstNode?.image_url || story.cover_url,
-      });
+        cover_url: finalCover,
+      }).select("id").single();
 
       await supabase.from("stories").update({ is_public: true }).eq("id", session.story_id);
 
-      return new Response(JSON.stringify({ success: true, type: "novel" }), {
+      return new Response(JSON.stringify({ success: true, type: "novel", novel_id: novel?.id }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

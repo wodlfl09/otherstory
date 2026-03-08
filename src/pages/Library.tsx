@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { BookOpen, Trash2, RotateCcw, Share2, Loader2 } from "lucide-react";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { toast } from "sonner";
+import PublishModal from "@/components/PublishModal";
 
 interface LibraryEntry {
   id: string;
@@ -36,6 +37,7 @@ export default function Library() {
   const [items, setItems] = useState<LibraryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [replayingId, setReplayingId] = useState<string | null>(null);
+  const [publishTarget, setPublishTarget] = useState<{ storyId: string; title: string; synopsis: string; coverUrl: string; protagonistName: string } | null>(null);
 
   const maxItems = profile?.plan === "pro" ? Infinity : profile?.plan === "basic" ? 9 : 3;
 
@@ -129,18 +131,15 @@ export default function Library() {
     }
   };
 
-  const handlePublishGame = async (e: React.MouseEvent, storyId: string) => {
+  const openPublishModal = (e: React.MouseEvent, item: LibraryEntry) => {
     e.stopPropagation();
-    try {
-      const { data, error } = await supabase.functions.invoke("publish-content", {
-        body: { type: "game", story_id: storyId },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      toast.success("게임이 공개되었습니다!");
-    } catch (err: any) {
-      toast.error(err.message || "공개 실패");
-    }
+    setPublishTarget({
+      storyId: item.story?.id,
+      title: item.story?.title || "",
+      synopsis: item.story?.synopsis || "",
+      coverUrl: item.story?.cover_url || item.fallbackCover || "",
+      protagonistName: item.story?.protagonist_name || "",
+    });
   };
 
   return (
@@ -211,7 +210,7 @@ export default function Library() {
                         )}
                         재진행
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={(e) => handlePublishGame(e, item.story?.id)} className="gap-1 text-xs">
+                      <Button variant="ghost" size="sm" onClick={(e) => openPublishModal(e, item)} className="gap-1 text-xs">
                         <Share2 className="h-3.5 w-3.5" />공개
                       </Button>
                       <Button variant="ghost" size="sm" onClick={(e) => removeItem(e, item.id)} className="ml-auto text-muted-foreground hover:text-destructive">
@@ -225,6 +224,21 @@ export default function Library() {
           </div>
         )}
       </div>
+
+      {publishTarget && (
+        <PublishModal
+          open={!!publishTarget}
+          onOpenChange={(val) => { if (!val) setPublishTarget(null); }}
+          mode="game"
+          storyId={publishTarget.storyId}
+          defaults={{
+            title: publishTarget.title,
+            synopsis: publishTarget.synopsis,
+            coverUrl: publishTarget.coverUrl,
+            protagonistName: publishTarget.protagonistName,
+          }}
+        />
+      )}
     </div>
   );
 }

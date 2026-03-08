@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { RotateCcw, ChevronLeft, ChevronRight, BookOpen, Loader2 } from "lucide-react";
+import { RotateCcw, ChevronLeft, ChevronRight, BookOpen, Loader2, Globe } from "lucide-react";
+import PublishModal from "@/components/PublishModal";
 
 interface SceneNode {
   step: number;
@@ -33,6 +34,9 @@ export default function StoryReader() {
   const [loading, setLoading] = useState(true);
   const [replayLoading, setReplayLoading] = useState(false);
   const [sessionFinished, setSessionFinished] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [publishGameOpen, setPublishGameOpen] = useState(false);
+  const [publishNovelOpen, setPublishNovelOpen] = useState(false);
 
   useEffect(() => {
     if (!storyId) return;
@@ -49,7 +53,7 @@ export default function StoryReader() {
     setStory(storyData);
 
     // Prefer finished session, fallback to latest
-    let sessionId: string | null = null;
+    let loadedSessionId: string | null = null;
     const { data: finishedSessions } = await supabase
       .from("story_sessions")
       .select("id, finished")
@@ -59,7 +63,7 @@ export default function StoryReader() {
       .limit(1);
 
     if (finishedSessions?.length) {
-      sessionId = finishedSessions[0].id;
+      loadedSessionId = finishedSessions[0].id;
       setSessionFinished(true);
     } else {
       const { data: latestSessions } = await supabase
@@ -69,16 +73,17 @@ export default function StoryReader() {
         .order("created_at", { ascending: false })
         .limit(1);
       if (latestSessions?.length) {
-        sessionId = latestSessions[0].id;
+        loadedSessionId = latestSessions[0].id;
         setSessionFinished(latestSessions[0].finished);
       }
     }
 
-    if (sessionId) {
+    setSessionId(loadedSessionId);
+    if (loadedSessionId) {
       const { data: nodeData } = await supabase
         .from("story_nodes")
         .select("*")
-        .eq("session_id", sessionId)
+        .eq("session_id", loadedSessionId)
         .order("step", { ascending: true });
 
       if (nodeData) {
@@ -146,10 +151,20 @@ export default function StoryReader() {
               <p className="text-sm text-muted-foreground mt-2">{story.synopsis}</p>
             )}
           </div>
-          <Button variant="outline" size="sm" onClick={handleReplay} disabled={replayLoading} className="gap-2 shrink-0">
-            {replayLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
-            재진행
-          </Button>
+          <div className="flex gap-2 shrink-0">
+            <Button variant="outline" size="sm" onClick={() => setPublishGameOpen(true)} className="gap-2">
+              <Globe className="h-4 w-4" />게임 공개
+            </Button>
+            {sessionFinished && sessionId && (
+              <Button variant="outline" size="sm" onClick={() => setPublishNovelOpen(true)} className="gap-2">
+                <BookOpen className="h-4 w-4" />소설 공개
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={handleReplay} disabled={replayLoading} className="gap-2">
+              {replayLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+              재진행
+            </Button>
+          </div>
         </div>
 
         {/* Scene navigation sidebar + main content */}
@@ -249,6 +264,36 @@ export default function StoryReader() {
           </div>
         )}
       </div>
+
+      {/* Publish Modals */}
+      {storyId && (
+        <PublishModal
+          open={publishGameOpen}
+          onOpenChange={setPublishGameOpen}
+          mode="game"
+          storyId={storyId}
+          defaults={{
+            title: story?.title,
+            synopsis: story?.synopsis,
+            coverUrl: story?.cover_url,
+            protagonistName: story?.protagonist_name,
+          }}
+        />
+      )}
+      {storyId && sessionId && (
+        <PublishModal
+          open={publishNovelOpen}
+          onOpenChange={setPublishNovelOpen}
+          mode="novel"
+          storyId={storyId}
+          sessionId={sessionId}
+          defaults={{
+            title: story?.title,
+            synopsis: story?.synopsis,
+            coverUrl: story?.cover_url,
+          }}
+        />
+      )}
     </div>
   );
 }
