@@ -10,6 +10,7 @@ import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { toast } from "sonner";
 import { Film, ImageIcon, AlertTriangle, Shield, Clock, Brain, Search, ArrowLeft, Home } from "lucide-react";
 import MotionComic from "@/components/MotionComic";
+import ShareCard from "@/components/game/ShareCard";
 import { cn } from "@/lib/utils";
 
 interface Choice {
@@ -47,6 +48,7 @@ export default function GamePlay() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const [node, setNode] = useState<StoryNode | null>(null);
   const [session, setSession] = useState<any>(null);
+  const [storyTitle, setStoryTitle] = useState("");
   const [loading, setLoading] = useState(true);
   const [choosing, setChoosing] = useState(false);
   const [showAd, setShowAd] = useState(false);
@@ -68,6 +70,9 @@ export default function GamePlay() {
     const { data: sess } = await supabase.from("story_sessions").select("*").eq("id", sessionId).single();
     if (!sess) { toast.error("세션을 찾을 수 없습니다."); return; }
     setSession(sess);
+    // Fetch story title
+    const { data: storyData } = await supabase.from("stories").select("title").eq("id", sess.story_id).single();
+    if (storyData) setStoryTitle(storyData.title);
 
     const currentNodeId = (sess as any).current_node_id || "n0";
     const { data: graphNode } = await supabase.from("story_nodes").select("*")
@@ -314,7 +319,18 @@ export default function GamePlay() {
             </div>
           )}
 
-          <div className="flex gap-3">
+          {/* Share */}
+          <ShareCard
+            storyTitle={storyTitle || "토리게임"}
+            endingMessage={endingMessage}
+            dominantIcon={dominant?.icon || "🤔"}
+            dominantLabel={dominant?.label || "신중함"}
+            stats={{ choices: session.step || 0, scenes: totalSteps, elapsed: elapsed !== null ? `${elapsed}분` : "-" }}
+            tendencies={tendencies.map(t => ({ key: t.key, label: t.label, icon: t.icon, pct: Math.round(((attitudeCounts[t.key] || 0) / total) * 100) }))}
+            imageUrl={node?.image_url}
+          />
+
+          <div className="flex gap-3 mt-4">
             <Button variant="outline" className="flex-1" onClick={() => navigate("/home")}>
               <Home className="h-4 w-4 mr-2" />홈으로
             </Button>
