@@ -11,13 +11,12 @@ import { Loader2 } from "lucide-react";
 
 export default function AdminRoles() {
   const { profile } = useAuth();
-  const role = (profile as any)?.role || "user";
-
-  if (role !== "admin") return <Navigate to="/admin/users" replace />;
-
   const [targetId, setTargetId] = useState("");
   const [newRole, setNewRole] = useState("subadmin");
   const [loading, setLoading] = useState(false);
+
+  const role = (profile as any)?.role || "user";
+  if (role !== "admin") return <Navigate to="/admin/users" replace />;
 
   const handleSetRole = async () => {
     if (!targetId) return;
