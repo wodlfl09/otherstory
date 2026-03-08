@@ -48,6 +48,7 @@ export default function GamePlay() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const [node, setNode] = useState<StoryNode | null>(null);
   const [session, setSession] = useState<any>(null);
+  const [storyTitle, setStoryTitle] = useState("");
   const [loading, setLoading] = useState(true);
   const [choosing, setChoosing] = useState(false);
   const [showAd, setShowAd] = useState(false);
