@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Share2, Twitter, Copy, Download, Check } from "lucide-react";
+import { Share2, Twitter, Copy, Download, Check, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 
 interface Tendency {
@@ -196,7 +196,7 @@ export default function ShareCard({
     }
   };
 
-  const handleShare = async (platform?: "twitter") => {
+  const handleShare = async (platform?: "twitter" | "kakao") => {
     setGenerating(true);
     try {
       const blob = await generateImage();
@@ -205,6 +205,13 @@ export default function ShareCard({
       if (platform === "twitter") {
         const encoded = encodeURIComponent(shareText);
         window.open(`https://twitter.com/intent/tweet?text=${encoded}`, "_blank");
+        return;
+      }
+
+      if (platform === "kakao") {
+        const kakaoText = `🎬 ${storyTitle} 클리어!\n${dominantIcon} 성향: ${dominantLabel}\n${endingMessage}`;
+        const encoded = encodeURIComponent(kakaoText);
+        window.open(`https://sharer.kakao.com/talk/friends/picker/link?url=${encodeURIComponent(window.location.href)}&text=${encoded}`, "_blank");
         return;
       }
 
@@ -239,16 +246,19 @@ export default function ShareCard({
   return (
     <div className="space-y-3">
       <canvas ref={canvasRef} className="hidden" />
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-4 gap-2">
         <Button variant="outline" size="sm" onClick={() => handleShare("twitter")} disabled={generating}>
-          <Twitter className="h-4 w-4 mr-1.5" />X
+          <Twitter className="h-4 w-4 mr-1" />X
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => handleShare("kakao")} disabled={generating} className="text-yellow-500 border-yellow-500/30 hover:bg-yellow-500/10">
+          <MessageCircle className="h-4 w-4 mr-1" />카톡
         </Button>
         <Button variant="outline" size="sm" onClick={handleCopyText} disabled={generating}>
-          {copied ? <Check className="h-4 w-4 mr-1.5" /> : <Copy className="h-4 w-4 mr-1.5" />}
+          {copied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
           복사
         </Button>
         <Button variant="outline" size="sm" onClick={() => handleShare()} disabled={generating}>
-          <Share2 className="h-4 w-4 mr-1.5" />공유
+          <Share2 className="h-4 w-4 mr-1" />공유
         </Button>
       </div>
       <Button variant="ghost" size="sm" className="w-full text-muted-foreground" onClick={handleDownload} disabled={generating}>
