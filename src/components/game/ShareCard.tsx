@@ -246,16 +246,19 @@ export default function ShareCard({
   return (
     <div className="space-y-3">
       <canvas ref={canvasRef} className="hidden" />
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-4 gap-2">
         <Button variant="outline" size="sm" onClick={() => handleShare("twitter")} disabled={generating}>
-          <Twitter className="h-4 w-4 mr-1.5" />X
+          <Twitter className="h-4 w-4 mr-1" />X
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => handleShare("kakao")} disabled={generating} className="text-yellow-500 border-yellow-500/30 hover:bg-yellow-500/10">
+          <MessageCircle className="h-4 w-4 mr-1" />카톡
         </Button>
         <Button variant="outline" size="sm" onClick={handleCopyText} disabled={generating}>
-          {copied ? <Check className="h-4 w-4 mr-1.5" /> : <Copy className="h-4 w-4 mr-1.5" />}
+          {copied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
           복사
         </Button>
         <Button variant="outline" size="sm" onClick={() => handleShare()} disabled={generating}>
-          <Share2 className="h-4 w-4 mr-1.5" />공유
+          <Share2 className="h-4 w-4 mr-1" />공유
         </Button>
       </div>
       <Button variant="ghost" size="sm" className="w-full text-muted-foreground" onClick={handleDownload} disabled={generating}>
