@@ -78,7 +78,8 @@ export default function StoryReader() {
       }
     }
 
-    if (sessionId) {
+    setSessionId(loadedSessionId);
+    if (loadedSessionId) {
       const { data: nodeData } = await supabase
         .from("story_nodes")
         .select("*")
