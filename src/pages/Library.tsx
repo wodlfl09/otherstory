@@ -22,6 +22,7 @@ interface LibraryEntry {
     protagonist_name: string | null;
     synopsis: string | null;
     created_at: string;
+    is_public: boolean | null;
   };
   fallbackCover?: string | null;
   lastPlayedAt?: string | null;
@@ -50,7 +51,7 @@ export default function Library() {
   const loadLibrary = async () => {
     const { data } = await supabase
       .from("library_items")
-      .select("id, pinned, created_at, story:stories(id, title, genre, cover_url, protagonist_name, synopsis, created_at)")
+      .select("id, pinned, created_at, story:stories(id, title, genre, cover_url, protagonist_name, synopsis, created_at, is_public)")
       .eq("user_id", user!.id)
       .order("pinned", { ascending: false })
       .order("created_at", { ascending: false });
@@ -206,7 +207,10 @@ export default function Library() {
                   </AspectRatio>
                   <div className="p-4">
                     <h3 className="font-medium text-foreground line-clamp-1">{item.story?.title || "제목 없음"}</h3>
-                    <div className="mt-1 flex items-center gap-2">
+                    <div className="mt-1 flex items-center gap-2 flex-wrap">
+                      {item.story?.is_public && (
+                        <Badge className="bg-primary/20 text-primary border-primary/30 text-[10px]">공개됨</Badge>
+                      )}
                       <Badge variant="outline" className="text-[10px]">
                         {GENRE_LABELS[item.story?.genre] || item.story?.genre}
                       </Badge>
