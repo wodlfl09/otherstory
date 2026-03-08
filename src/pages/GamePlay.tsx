@@ -268,8 +268,14 @@ export default function GamePlay() {
               <Home className="h-4 w-4 mr-2" />홈으로
             </Button>
             <Button className="flex-1" onClick={() => {
-              supabase.functions.invoke("replay-story", { body: { story_id: session.story_id } })
-                .then(({ data }) => { if (data?.session_id) navigate(`/game/${data.session_id}`); })
+              const idempotency_key = crypto.randomUUID();
+              supabase.functions.invoke("replay-story", { body: { story_id: session.story_id, idempotency_key } })
+                .then(({ data, error }) => {
+                  if (error) { toast.error("다시 플레이에 실패했습니다."); return; }
+                  if (data?.ad_required) { navigate(`/ad?type=replay&story_id=${session.story_id}&key=${idempotency_key}`); return; }
+                  if (data?.error) { toast.error(data.error); return; }
+                  if (data?.session_id) navigate(`/game/${data.session_id}`);
+                })
                 .catch(() => toast.error("다시 플레이에 실패했습니다."));
             }}>
               다시 플레이
