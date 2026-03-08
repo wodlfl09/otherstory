@@ -37,6 +37,7 @@ export default function Library() {
   const [items, setItems] = useState<LibraryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [replayingId, setReplayingId] = useState<string | null>(null);
+  const [publishTarget, setPublishTarget] = useState<{ storyId: string; title: string; synopsis: string; coverUrl: string; protagonistName: string } | null>(null);
 
   const maxItems = profile?.plan === "pro" ? Infinity : profile?.plan === "basic" ? 9 : 3;
 
