@@ -439,9 +439,11 @@ export type Database = {
           id: string
           image_prompt: string | null
           image_url: string | null
+          node_id: string | null
           scene_text: string
-          session_id: string
+          session_id: string | null
           step: number
+          story_id: string | null
           variant: string
         }
         Insert: {
@@ -450,9 +452,11 @@ export type Database = {
           id?: string
           image_prompt?: string | null
           image_url?: string | null
+          node_id?: string | null
           scene_text: string
-          session_id: string
+          session_id?: string | null
           step: number
+          story_id?: string | null
           variant?: string
         }
         Update: {
@@ -461,9 +465,11 @@ export type Database = {
           id?: string
           image_prompt?: string | null
           image_url?: string | null
+          node_id?: string | null
           scene_text?: string
-          session_id?: string
+          session_id?: string | null
           step?: number
+          story_id?: string | null
           variant?: string
         }
         Relationships: [
@@ -474,6 +480,13 @@ export type Database = {
             referencedRelation: "story_sessions"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "story_nodes_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "stories"
+            referencedColumns: ["id"]
+          },
         ]
       }
       story_sessions: {
@@ -482,6 +495,7 @@ export type Database = {
           ad_shown: boolean
           choices_count: number
           created_at: string
+          current_node_id: string | null
           duration_min: number
           endings_count: number
           finished: boolean
@@ -497,6 +511,7 @@ export type Database = {
           ad_shown?: boolean
           choices_count?: number
           created_at?: string
+          current_node_id?: string | null
           duration_min?: number
           endings_count?: number
           finished?: boolean
@@ -512,6 +527,7 @@ export type Database = {
           ad_shown?: boolean
           choices_count?: number
           created_at?: string
+          current_node_id?: string | null
           duration_min?: number
           endings_count?: number
           finished?: boolean
