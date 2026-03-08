@@ -58,7 +58,7 @@ export default function Navbar() {
             </DropdownMenu>
 
             {(role === "admin" || role === "subadmin") && (
-              <Link to="/admin">
+              <Link to="/admin/users">
                 <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
                   <Shield className="h-4 w-4" />
                 </Button>

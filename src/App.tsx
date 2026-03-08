@@ -15,9 +15,13 @@ import AdultVerify from "@/pages/AdultVerify";
 import Explore from "@/pages/Explore";
 import StoryReader from "@/pages/StoryReader";
 import NovelReader from "@/pages/NovelReader";
-import Admin from "@/pages/Admin";
 import Ad from "@/pages/Ad";
 import NotFound from "./pages/NotFound";
+import AdminLayout from "@/pages/admin/AdminLayout";
+import AdminUsers from "@/pages/admin/AdminUsers";
+import AdminCredits from "@/pages/admin/AdminCredits";
+import AdminRoles from "@/pages/admin/AdminRoles";
+import AdminBootstrap from "@/pages/admin/AdminBootstrap";
 
 const queryClient = new QueryClient();
 
@@ -39,9 +43,15 @@ const App = () => (
             <Route path="/explore" element={<ProtectedRoute><Explore /></ProtectedRoute>} />
             <Route path="/story/:storyId" element={<ProtectedRoute><StoryReader /></ProtectedRoute>} />
             <Route path="/novel/:novelId" element={<ProtectedRoute><NovelReader /></ProtectedRoute>} />
-            <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
             <Route path="/ad" element={<ProtectedRoute><Ad /></ProtectedRoute>} />
             <Route path="/adult-verify" element={<ProtectedRoute><AdultVerify /></ProtectedRoute>} />
+            <Route path="/admin/bootstrap" element={<ProtectedRoute><AdminBootstrap /></ProtectedRoute>} />
+            <Route path="/admin" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
+              <Route index element={<Navigate to="/admin/users" replace />} />
+              <Route path="users" element={<AdminUsers />} />
+              <Route path="credits" element={<AdminCredits />} />
+              <Route path="roles" element={<AdminRoles />} />
+            </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
