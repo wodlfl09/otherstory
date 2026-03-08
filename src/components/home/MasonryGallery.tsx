@@ -3,6 +3,19 @@ import { supabase } from "@/integrations/supabase/client";
 import MotionCard, { getMotionPreset, getRandomSpan } from "./MotionCard";
 import ExplorePreviewModal from "@/components/explore/ExplorePreviewModal";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
+
+const GENRE_FILTERS = [
+  { key: "all", label: "전체" },
+  { key: "sf", label: "SF" },
+  { key: "fantasy", label: "판타지" },
+  { key: "mystery", label: "추리" },
+  { key: "action", label: "액션" },
+  { key: "horror", label: "공포" },
+  { key: "romance", label: "로맨스" },
+  { key: "comic", label: "코믹" },
+  { key: "martial", label: "무협" },
+] as const;
 
 interface PublicGame {
   story_id: string;
@@ -54,9 +67,16 @@ export default function MasonryGallery() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selected, setSelected] = useState<GalleryItem | null>(null);
 
+  const [activeGenre, setActiveGenre] = useState<string>("all");
+
   useEffect(() => {
     loadAll();
   }, []);
+
+  const filteredItems = useMemo(() => {
+    if (activeGenre === "all") return items;
+    return items.filter((item) => item.genre === activeGenre);
+  }, [items, activeGenre]);
 
   const loadAll = async () => {
     setLoading(true);
@@ -136,23 +156,48 @@ export default function MasonryGallery() {
 
   return (
     <>
-      <div className="gallery-masonry">
-        {items.map((item, i) => (
-          <MotionCard
-            key={`${item.type}-${item.id}`}
-            type={item.type}
-            id={item.id}
-            title={item.title}
-            genre={item.genre}
-            coverUrl={item.coverUrl}
-            likeCount={item.likeCount}
-            span={getRandomSpan(i)}
-            motionPreset={getMotionPreset(item.genre)}
-            delay={Math.min(i * 60, 600)}
-            onClick={() => openPreview(item)}
-          />
+      {/* Genre Filter Tabs */}
+      <div className="mb-6 flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+        {GENRE_FILTERS.map((g) => (
+          <button
+            key={g.key}
+            onClick={() => setActiveGenre(g.key)}
+            className={cn(
+              "shrink-0 rounded-full px-4 py-1.5 text-xs font-medium transition-all duration-200",
+              "border border-border hover:border-primary/40",
+              activeGenre === g.key
+                ? "bg-primary text-primary-foreground border-primary shadow-[0_0_12px_hsl(var(--primary)/0.3)]"
+                : "bg-secondary/50 text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {g.label}
+          </button>
         ))}
       </div>
+
+      {filteredItems.length === 0 ? (
+        <div className="py-16 text-center text-muted-foreground">
+          해당 장르의 공개 작품이 없습니다.
+        </div>
+      ) : (
+        <div className="gallery-masonry">
+          {filteredItems.map((item, i) => (
+            <MotionCard
+              key={`${item.type}-${item.id}`}
+              type={item.type}
+              id={item.id}
+              title={item.title}
+              genre={item.genre}
+              coverUrl={item.coverUrl}
+              likeCount={item.likeCount}
+              span={getRandomSpan(i)}
+              motionPreset={getMotionPreset(item.genre)}
+              delay={Math.min(i * 60, 600)}
+              onClick={() => openPreview(item)}
+            />
+          ))}
+        </div>
+      )}
 
       {selected && (
         <ExplorePreviewModal
