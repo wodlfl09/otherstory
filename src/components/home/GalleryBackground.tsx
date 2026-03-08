@@ -25,12 +25,12 @@ export default function GalleryBackground() {
           .from("public_games")
           .select("story_id, like_count, story:stories(title, genre, cover_url)")
           .order("like_count", { ascending: false })
-          .limit(20),
+          .limit(30),
         supabase
           .from("public_novels")
           .select("id, title, cover_url, like_count")
           .order("like_count", { ascending: false })
-          .limit(12),
+          .limit(20),
       ]);
 
       const games: BgItem[] = ((gamesRes.data as any[]) || []).map((g) => ({
@@ -59,7 +59,7 @@ export default function GalleryBackground() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none select-none" aria-hidden="true">
       {/* The masonry grid fills the viewport */}
-      <div className="gallery-masonry h-full w-full opacity-40">
+      <div className="gallery-masonry h-full w-full opacity-70">
         {items.map((item, i) => (
           <MotionCard
             key={`${item.type}-${item.id}`}
@@ -76,10 +76,10 @@ export default function GalleryBackground() {
           />
         ))}
       </div>
-      {/* Dark overlay for readability */}
-      <div className="absolute inset-0 bg-background/60 backdrop-blur-[2px]" />
-      {/* Vignette */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,hsl(var(--background))_100%)]" />
+      {/* Lighter overlay — let gallery shine through */}
+      <div className="absolute inset-0 bg-background/30" />
+      {/* Subtle vignette */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_50%,hsl(var(--background)/0.7)_100%)]" />
     </div>
   );
 }
