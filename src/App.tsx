@@ -39,6 +39,7 @@ const App = () => (
             <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
             <Route path="/create" element={<ProtectedRoute><CreateStory /></ProtectedRoute>} />
             <Route path="/game/:sessionId" element={<ProtectedRoute><GamePlay /></ProtectedRoute>} />
+            <Route path="/generating/:jobId" element={<ProtectedRoute><GenerationWait /></ProtectedRoute>} />
             <Route path="/library" element={<ProtectedRoute><Library /></ProtectedRoute>} />
             <Route path="/pricing" element={<ProtectedRoute><Pricing /></ProtectedRoute>} />
             <Route path="/explore" element={<ProtectedRoute><Explore /></ProtectedRoute>} />
