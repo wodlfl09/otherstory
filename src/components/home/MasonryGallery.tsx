@@ -135,13 +135,18 @@ export default function MasonryGallery() {
   if (loading) {
     return (
       <div className="gallery-masonry">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <Skeleton
-            key={i}
-            className={`rounded-xl ${i % 3 === 0 ? "row-span-2" : i % 4 === 2 ? "col-span-2" : ""}`}
-            style={{ minHeight: i % 3 === 0 ? 380 : 260 }}
-          />
-        ))}
+        {Array.from({ length: 12 }).map((_, i) => {
+          const s = getRandomSpan(i);
+          return (
+            <Skeleton
+              key={i}
+              className={cn(
+                "rounded-lg",
+                s === "tall" ? "gallery-span-tall" : s === "wide" ? "gallery-span-wide" : "gallery-span-normal"
+              )}
+            />
+          );
+        })}
       </div>
     );
   }
