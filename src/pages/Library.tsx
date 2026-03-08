@@ -131,18 +131,15 @@ export default function Library() {
     }
   };
 
-  const handlePublishGame = async (e: React.MouseEvent, storyId: string) => {
+  const openPublishModal = (e: React.MouseEvent, item: LibraryEntry) => {
     e.stopPropagation();
-    try {
-      const { data, error } = await supabase.functions.invoke("publish-content", {
-        body: { type: "game", story_id: storyId },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      toast.success("게임이 공개되었습니다!");
-    } catch (err: any) {
-      toast.error(err.message || "공개 실패");
-    }
+    setPublishTarget({
+      storyId: item.story?.id,
+      title: item.story?.title || "",
+      synopsis: item.story?.synopsis || "",
+      coverUrl: item.story?.cover_url || item.fallbackCover || "",
+      protagonistName: item.story?.protagonist_name || "",
+    });
   };
 
   return (
