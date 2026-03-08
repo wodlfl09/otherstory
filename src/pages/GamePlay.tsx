@@ -248,6 +248,13 @@ export default function GamePlay() {
       (attitudeCounts[a.key] || 0) >= (attitudeCounts[b.key] || 0) ? a : b,
       tendencies[0]
     );
+    const tendencyMessages: Record<string, string> = {
+      positive: "당신은 두려움에 맞서 싸웠습니다. 용기가 이 결말을 이끌었습니다.",
+      negative: "당신은 신중하게 방어하며 생존을 택했습니다. 경계심이 당신을 지켰습니다.",
+      avoidance: "당신은 위험을 피해 다른 길을 찾았습니다. 때로는 도망이 최선입니다.",
+      neutral: "당신은 매 순간 깊이 고민하며 선택했습니다. 침착함이 빛났습니다.",
+    };
+    const endingMessage = dominant ? tendencyMessages[dominant.key] : "당신의 선택이 이 결말을 만들었습니다";
 
     return (
       <div className="min-h-screen bg-background">
@@ -255,7 +262,7 @@ export default function GamePlay() {
           {/* Ending */}
           <div className="text-center mb-8">
             <h1 className="font-display text-2xl font-bold text-primary">🎬 END</h1>
-            <p className="text-sm text-muted-foreground mt-1">당신의 선택이 이 결말을 만들었습니다</p>
+            <p className="text-sm text-muted-foreground mt-2 max-w-xs mx-auto">{endingMessage}</p>
           </div>
           {node?.image_url && (
             <AspectRatio ratio={16 / 9} className="overflow-hidden rounded-xl border border-border shadow-2xl mb-6">
