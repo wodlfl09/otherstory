@@ -43,7 +43,7 @@ export function getRandomSpan(index: number): "tall" | "wide" | "normal" {
 }
 
 export default function MotionCard({
-  type, title, genre, coverUrl, likeCount, span, motionPreset, delay, onClick,
+  type, title, genre, coverUrl, likeCount, span, motionPreset, delay, onClick, hideOverlay,
 }: MotionCardProps) {
   const cardRef = useRef<HTMLButtonElement>(null);
   const [visible, setVisible] = useState(false);
