@@ -58,7 +58,7 @@ export default function Auth() {
       <GalleryBackground />
 
       {/* Login card */}
-      <div className="relative z-10 w-full max-w-md space-y-6 rounded-2xl border border-border/50 bg-card/80 backdrop-blur-xl p-8 shadow-[0_0_60px_hsl(265_90%_60%/0.15)]">
+      <div className="relative z-10 w-full max-w-sm space-y-5 rounded-2xl border border-foreground/10 bg-card/40 backdrop-blur-xl p-6 shadow-[0_0_80px_hsl(265_90%_60%/0.1)]">
         <div className="text-center">
           <h1 className="font-display text-2xl font-bold tracking-wider">
             AI <span className="text-primary text-glow">스토리</span> 게임
