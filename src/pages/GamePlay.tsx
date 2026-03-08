@@ -52,6 +52,7 @@ export default function GamePlay() {
   const [showAd, setShowAd] = useState(false);
   const [adTimer, setAdTimer] = useState(5);
   const [imageLoading, setImageLoading] = useState(false);
+  const [exitTarget, setExitTarget] = useState<"back" | "home" | null>(null);
   const [feedback, setFeedback] = useState<ChoiceFeedback[] | null>(null);
   const [feedbackVisible, setFeedbackVisible] = useState(false);
   const [motionComic, setMotionComic] = useState(() => {
