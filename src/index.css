@@ -194,46 +194,61 @@
   }
 }
 
-/* ─── Gallery Masonry ─── */
+/* ─── Gallery Masonry (Pinterest-style) ─── */
 .gallery-masonry {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 0.75rem;
+  grid-auto-rows: 120px;
+  gap: 4px;
 }
 @media (min-width: 640px) {
   .gallery-masonry {
     grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
+    grid-auto-rows: 140px;
+    gap: 6px;
   }
 }
 @media (min-width: 1024px) {
   .gallery-masonry {
     grid-template-columns: repeat(4, 1fr);
-    gap: 1.25rem;
+    grid-auto-rows: 100px;
+    gap: 6px;
   }
 }
+@media (min-width: 1280px) {
+  .gallery-masonry {
+    grid-template-columns: repeat(5, 1fr);
+    grid-auto-rows: 100px;
+    gap: 6px;
+  }
+}
+
+/* Span classes */
+.gallery-span-tall  { grid-row: span 3; }
+.gallery-span-wide  { grid-column: span 2; grid-row: span 2; }
+.gallery-span-normal { grid-row: span 2; }
 
 /* Card reveal */
 .gallery-card-hidden {
   opacity: 0;
-  transform: translateY(24px);
+  transform: translateY(20px) scale(0.97);
 }
 .gallery-card-visible {
-  animation: gallery-reveal 0.6s ease-out forwards;
+  animation: gallery-reveal 0.5s ease-out forwards;
 }
 @keyframes gallery-reveal {
-  0% { opacity: 0; transform: translateY(24px); }
-  100% { opacity: 1; transform: translateY(0); }
+  0%   { opacity: 0; transform: translateY(20px) scale(0.97); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 /* Hover */
 .gallery-card {
-  transition: transform 0.4s ease, box-shadow 0.4s ease;
+  transition: transform 0.35s cubic-bezier(0.22,1,0.36,1), box-shadow 0.35s ease, z-index 0s;
 }
 .gallery-card:hover {
-  transform: translateY(-6px) scale(1.02);
-  box-shadow: 0 12px 40px hsl(265 90% 60% / 0.25), 0 0 0 1px hsl(265 90% 60% / 0.15);
-  z-index: 10;
+  transform: scale(1.03);
+  box-shadow: 0 16px 48px hsl(0 0% 0% / 0.6), 0 0 0 1px hsl(265 90% 60% / 0.2);
+  z-index: 20;
 }
 
 /* ─── Motion presets ─── */

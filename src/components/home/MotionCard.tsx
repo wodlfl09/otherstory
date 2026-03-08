@@ -28,14 +28,14 @@ export function getMotionPreset(genre?: string): MotionPreset {
   if (!genre) return "soft";
   if (["sf", "fantasy", "action"].includes(genre)) return "cinematic";
   if (["mystery", "horror"].includes(genre)) return "noir";
-  return "soft"; // romance, comic, martial
+  return "soft";
 }
 
-/** Random span assignment for masonry variety */
+/** Deterministic span pattern for masonry variety */
 export function getRandomSpan(index: number): "tall" | "wide" | "normal" {
   const pattern = [
     "tall", "normal", "wide", "normal", "normal", "tall",
-    "normal", "wide", "normal", "tall", "normal", "normal",
+    "wide", "normal", "tall", "normal", "normal", "wide",
   ] as const;
   return pattern[index % pattern.length];
 }
@@ -46,23 +46,16 @@ export default function MotionCard({
   const cardRef = useRef<HTMLButtonElement>(null);
   const [visible, setVisible] = useState(false);
 
-  // Intersection observer for scroll-reveal
   useEffect(() => {
     const el = cardRef.current;
     if (!el) return;
     const obs = new IntersectionObserver(
       ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect(); } },
-      { threshold: 0.15 }
+      { threshold: 0.1 }
     );
     obs.observe(el);
     return () => obs.disconnect();
   }, []);
-
-  const spanClass = span === "tall"
-    ? "row-span-2"
-    : span === "wide"
-      ? "col-span-2"
-      : "";
 
   const motionClass =
     motionPreset === "cinematic"
@@ -71,17 +64,25 @@ export default function MotionCard({
         ? "gallery-motion-noir"
         : "gallery-motion-soft";
 
+  // Height classes for the masonry auto-row system
+  const heightClass = span === "tall"
+    ? "gallery-span-tall"
+    : span === "wide"
+      ? "gallery-span-wide"
+      : "gallery-span-normal";
+
   return (
     <button
       ref={cardRef}
       onClick={onClick}
       className={cn(
-        "gallery-card group relative overflow-hidden rounded-xl border border-border bg-card text-left",
-        "focus:outline-none focus:ring-2 focus:ring-ring",
-        spanClass,
+        "gallery-card group relative overflow-hidden bg-card text-left",
+        "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 focus:ring-offset-background",
+        "rounded-lg",
+        heightClass,
         visible ? "gallery-card-visible" : "gallery-card-hidden"
       )}
-      style={{ animationDelay: `${delay}ms`, minHeight: span === "tall" ? 380 : span === "wide" ? 200 : 260 }}
+      style={{ animationDelay: `${delay}ms` }}
     >
       {/* Image with motion */}
       <div className="absolute inset-0 overflow-hidden">
@@ -95,48 +96,52 @@ export default function MotionCard({
         ) : (
           <div className={cn("h-full w-full bg-secondary flex items-center justify-center", motionClass)}>
             {type === "game"
-              ? <Play className="h-12 w-12 text-muted-foreground/40" />
-              : <BookOpen className="h-12 w-12 text-muted-foreground/40" />}
+              ? <Play className="h-10 w-10 text-muted-foreground/30" />
+              : <BookOpen className="h-10 w-10 text-muted-foreground/30" />}
           </div>
         )}
       </div>
 
-      {/* Vignette overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
+      {/* Vignette — stronger bottom fade for text readability */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent pointer-events-none" />
 
-      {/* Glitch scanline for noir */}
+      {/* Noir scanline */}
       {motionPreset === "noir" && (
         <div className="absolute inset-0 gallery-noir-scanline pointer-events-none" />
       )}
 
-      {/* Light sweep for cinematic */}
+      {/* Cinematic light sweep */}
       {motionPreset === "cinematic" && (
         <div className="absolute inset-0 gallery-light-sweep pointer-events-none" />
       )}
 
-      {/* Content overlay — bottom */}
-      <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 z-10 translate-y-1 group-hover:translate-y-0 transition-transform duration-300">
-        <div className="flex items-end gap-2">
-          <div className="flex-1 min-w-0">
-            <h3 className="font-medium text-sm sm:text-base text-white line-clamp-2 drop-shadow-lg">
-              {title}
-            </h3>
-            <div className="flex items-center gap-2 mt-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-              {genre && (
-                <Badge variant="outline" className="text-[10px] border-white/30 text-white/80 bg-white/10 backdrop-blur-sm">
-                  {GENRE_LABELS[genre] || genre}
-                </Badge>
-              )}
-              <span className="flex items-center gap-1 text-[11px] text-white/70">
-                <Heart className="h-3 w-3" />{likeCount}
-              </span>
-            </div>
-          </div>
+      {/* Like indicator — top right, always visible */}
+      {likeCount > 0 && (
+        <div className="absolute top-2 right-2 z-10 flex items-center gap-1 rounded-full bg-black/50 backdrop-blur-sm px-2 py-1">
+          <Heart className="h-3 w-3 text-primary fill-primary" />
+          <span className="text-[10px] font-medium text-foreground/90">{likeCount}</span>
+        </div>
+      )}
+
+      {/* Content overlay — bottom, minimal */}
+      <div className="absolute bottom-0 left-0 right-0 p-3 z-10 translate-y-0.5 group-hover:translate-y-0 transition-transform duration-300">
+        <h3 className="font-medium text-xs sm:text-sm text-foreground line-clamp-2 drop-shadow-lg">
+          {title}
+        </h3>
+        <div className="flex items-center gap-1.5 mt-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          {genre && (
+            <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-foreground/20 text-foreground/70 bg-background/20 backdrop-blur-sm">
+              {GENRE_LABELS[genre] || genre}
+            </Badge>
+          )}
+          <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-foreground/20 text-foreground/70 bg-background/20 backdrop-blur-sm">
+            {type === "game" ? "게임" : "소설"}
+          </Badge>
         </div>
       </div>
 
-      {/* Hover glow border */}
-      <div className="absolute inset-0 rounded-xl border-2 border-transparent group-hover:border-primary/40 transition-colors duration-300 pointer-events-none" />
+      {/* Hover glow ring */}
+      <div className="absolute inset-0 rounded-lg border border-transparent group-hover:border-primary/30 transition-colors duration-300 pointer-events-none" />
     </button>
   );
 }
