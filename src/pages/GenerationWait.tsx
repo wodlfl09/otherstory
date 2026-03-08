@@ -216,7 +216,7 @@ export default function GenerationWait() {
         {/* Tip text */}
         {job.status !== "completed" && (
           <p className="text-center text-xs text-muted-foreground/60">
-            이 페이지를 떠나도 생성은 계속됩니다. 완료 시 알림을 보내드려요.
+            이 페이지에서 생성이 진행됩니다. 페이지를 떠나면 돌아올 때 이어서 생성합니다.
           </p>
         )}
 
