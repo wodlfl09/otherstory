@@ -83,7 +83,7 @@ export default function StoryReader() {
       const { data: nodeData } = await supabase
         .from("story_nodes")
         .select("*")
-        .eq("session_id", sessionId)
+        .eq("session_id", loadedSessionId)
         .order("step", { ascending: true });
 
       if (nodeData) {
