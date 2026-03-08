@@ -22,6 +22,7 @@ interface LibraryEntry {
     protagonist_name: string | null;
     synopsis: string | null;
     created_at: string;
+    is_public: boolean | null;
   };
   fallbackCover?: string | null;
   lastPlayedAt?: string | null;
