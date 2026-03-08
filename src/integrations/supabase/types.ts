@@ -122,6 +122,66 @@ export type Database = {
         }
         Relationships: []
       }
+      generation_jobs: {
+        Row: {
+          completed_at: string | null
+          completed_nodes: number
+          created_at: string
+          current_stage: string
+          eta_seconds: number | null
+          id: string
+          progress_percent: number
+          session_id: string
+          status: string
+          story_id: string
+          total_nodes: number
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          completed_nodes?: number
+          created_at?: string
+          current_stage?: string
+          eta_seconds?: number | null
+          id?: string
+          progress_percent?: number
+          session_id: string
+          status?: string
+          story_id: string
+          total_nodes?: number
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          completed_nodes?: number
+          created_at?: string
+          current_stage?: string
+          eta_seconds?: number | null
+          id?: string
+          progress_percent?: number
+          session_id?: string
+          status?: string
+          story_id?: string
+          total_nodes?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generation_jobs_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "story_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "generation_jobs_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "stories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       image_style_profiles: {
         Row: {
           cfg: number

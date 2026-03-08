@@ -78,7 +78,7 @@ export default function CreateStory() {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      navigate(`/game/${data.session_id}`);
+      navigate(`/generating/${data.job_id}`);
     } catch (err: any) {
       if (err.message?.includes("크레딧이 부족")) {
         setCreditModal(true);
