@@ -319,7 +319,18 @@ export default function GamePlay() {
             </div>
           )}
 
-          <div className="flex gap-3">
+          {/* Share */}
+          <ShareCard
+            storyTitle={storyTitle || "토리게임"}
+            endingMessage={endingMessage}
+            dominantIcon={dominant?.icon || "🤔"}
+            dominantLabel={dominant?.label || "신중함"}
+            stats={{ choices: session.step || 0, scenes: totalSteps, elapsed: elapsed !== null ? `${elapsed}분` : "-" }}
+            tendencies={tendencies.map(t => ({ key: t.key, label: t.label, icon: t.icon, pct: Math.round(((attitudeCounts[t.key] || 0) / total) * 100) }))}
+            imageUrl={node?.image_url}
+          />
+
+          <div className="flex gap-3 mt-4">
             <Button variant="outline" className="flex-1" onClick={() => navigate("/home")}>
               <Home className="h-4 w-4 mr-2" />홈으로
             </Button>
