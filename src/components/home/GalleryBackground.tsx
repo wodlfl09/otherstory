@@ -25,12 +25,12 @@ export default function GalleryBackground() {
           .from("public_games")
           .select("story_id, like_count, story:stories(title, genre, cover_url)")
           .order("like_count", { ascending: false })
-          .limit(20),
+          .limit(30),
         supabase
           .from("public_novels")
           .select("id, title, cover_url, like_count")
           .order("like_count", { ascending: false })
-          .limit(12),
+          .limit(20),
       ]);
 
       const games: BgItem[] = ((gamesRes.data as any[]) || []).map((g) => ({
