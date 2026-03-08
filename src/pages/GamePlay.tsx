@@ -199,7 +199,21 @@ export default function GamePlay() {
                 }}
               />
             </div>
-            <span>{session.duration_min}분</span>
+            <button
+              onClick={() => {
+                const next = !motionComic;
+                setMotionComic(next);
+                localStorage.setItem("motion-comic", String(next));
+              }}
+              className={`flex items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors ${
+                motionComic ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
+              }`}
+              title={motionComic ? "Motion Comic OFF" : "Motion Comic ON"}
+            >
+              <Film className="h-3.5 w-3.5" />
+              {motionComic ? "MC" : "MC"}
+            </button>
+            <span className="ml-2">{session.duration_min}분</span>
           </div>
         )}
 
