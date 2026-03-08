@@ -7,11 +7,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
 import UpgradeModal from "@/components/UpgradeModal";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Wand2 } from "lucide-react";
+import { Wand2, Coins } from "lucide-react";
 
 export default function CreateStory() {
   const [searchParams] = useSearchParams();
@@ -31,6 +32,7 @@ export default function CreateStory() {
   const [upgradeModal, setUpgradeModal] = useState<{ open: boolean; feature: string; plan: string }>({
     open: false, feature: "", plan: "",
   });
+  const [creditModal, setCreditModal] = useState(false);
 
   const plan = profile?.plan || "free";
 
@@ -46,6 +48,13 @@ export default function CreateStory() {
   const handleStart = async () => {
     if (!user) return;
     if (!name.trim()) { toast.error("이름을 입력해주세요."); return; }
+
+    // Check credits before calling edge function
+    const currentCredits = profile?.credits ?? 0;
+    if (currentCredits < 10) {
+      setCreditModal(true);
+      return;
+    }
 
     const dur = parseInt(duration);
     if (dur > 10 && !checkPlanAccess(`${dur}분 플레이`, dur > 20 ? "pro" : "basic")) return;
@@ -71,7 +80,11 @@ export default function CreateStory() {
       if (data?.error) throw new Error(data.error);
       navigate(`/game/${data.session_id}`);
     } catch (err: any) {
-      toast.error(err.message || "세션 생성에 실패했습니다.");
+      if (err.message?.includes("크레딧이 부족")) {
+        setCreditModal(true);
+      } else {
+        toast.error(err.message || "세션 생성에 실패했습니다.");
+      }
     } finally {
       setLoading(false);
     }
@@ -192,6 +205,30 @@ export default function CreateStory() {
           feature={upgradeModal.feature}
           requiredPlan={upgradeModal.plan}
         />
+
+        {/* Credit insufficient modal */}
+        <Dialog open={creditModal} onOpenChange={setCreditModal}>
+          <DialogContent className="max-w-sm bg-card border-border">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-foreground">
+                <Coins className="h-5 w-5 text-primary" />
+                크레딧 부족
+              </DialogTitle>
+              <DialogDescription>
+                스토리를 시작하려면 <span className="font-bold text-foreground">10 크레딧</span>이 필요합니다.
+                현재 잔액: <span className="font-bold text-primary">{profile?.credits ?? 0} 크레딧</span>
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col gap-2 pt-2">
+              <Button onClick={() => { setCreditModal(false); navigate("/pricing"); }} className="w-full">
+                크레딧 충전하기
+              </Button>
+              <Button variant="outline" onClick={() => setCreditModal(false)} className="w-full">
+                닫기
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
