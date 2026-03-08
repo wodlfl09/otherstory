@@ -226,6 +226,10 @@ export default function GamePlay() {
   const progressPct = Math.min(100, ((session?.step || 0) / (totalSteps - 1)) * 100);
 
   if (session?.finished) {
+    const elapsed = session.created_at && session.updated_at
+      ? Math.round((new Date(session.updated_at).getTime() - new Date(session.created_at).getTime()) / 60000)
+      : null;
+
     return (
       <div className="min-h-screen bg-background">
         <div className="max-w-4xl mx-auto px-4 pt-8 pb-16">
@@ -239,9 +243,26 @@ export default function GamePlay() {
               <img src={node.image_url} alt="엔딩" className="h-full w-full object-cover" />
             </AspectRatio>
           )}
-          <div className="rounded-xl bg-card/50 backdrop-blur-sm border border-border p-6 mb-8">
+          <div className="rounded-xl bg-card/50 backdrop-blur-sm border border-border p-6 mb-6">
             <p className="whitespace-pre-wrap leading-relaxed text-foreground text-sm">{node?.scene_text}</p>
           </div>
+
+          {/* Play stats */}
+          <div className="grid grid-cols-3 gap-3 mb-8">
+            <div className="rounded-xl bg-card/50 backdrop-blur-sm border border-border p-4 text-center">
+              <p className="text-lg font-bold text-primary">{session.step || 0}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">총 선택</p>
+            </div>
+            <div className="rounded-xl bg-card/50 backdrop-blur-sm border border-border p-4 text-center">
+              <p className="text-lg font-bold text-primary">{totalSteps}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">총 장면</p>
+            </div>
+            <div className="rounded-xl bg-card/50 backdrop-blur-sm border border-border p-4 text-center">
+              <p className="text-lg font-bold text-primary">{elapsed !== null ? `${elapsed}분` : "-"}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">소요 시간</p>
+            </div>
+          </div>
+
           <div className="flex gap-3">
             <Button variant="outline" className="flex-1" onClick={() => navigate("/home")}>
               <Home className="h-4 w-4 mr-2" />홈으로
