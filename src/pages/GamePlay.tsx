@@ -70,6 +70,9 @@ export default function GamePlay() {
     const { data: sess } = await supabase.from("story_sessions").select("*").eq("id", sessionId).single();
     if (!sess) { toast.error("세션을 찾을 수 없습니다."); return; }
     setSession(sess);
+    // Fetch story title
+    const { data: storyData } = await supabase.from("stories").select("title").eq("id", sess.story_id).single();
+    if (storyData) setStoryTitle(storyData.title);
 
     const currentNodeId = (sess as any).current_node_id || "n0";
     const { data: graphNode } = await supabase.from("story_nodes").select("*")
