@@ -4,8 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { useNavigate } from "react-router-dom";
-import { BookOpen, Trash2, RotateCcw, Share2, Loader2 } from "lucide-react";
+import { BookOpen, Trash2, RotateCcw, Share2, Loader2, Sparkles } from "lucide-react";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { toast } from "sonner";
 import PublishModal from "@/components/PublishModal";
@@ -40,12 +41,26 @@ export default function Library() {
   const [loading, setLoading] = useState(true);
   const [replayingId, setReplayingId] = useState<string | null>(null);
   const [publishTarget, setPublishTarget] = useState<{ storyId: string; title: string; synopsis: string; coverUrl: string; protagonistName: string } | null>(null);
+  const [activeJob, setActiveJob] = useState<any>(null);
 
   const maxItems = profile?.plan === "pro" ? Infinity : profile?.plan === "basic" ? 9 : 3;
 
   useEffect(() => {
     if (!user) return;
     loadLibrary();
+    // Check for active generation jobs
+    const checkActiveJobs = async () => {
+      const { data } = await supabase
+        .from("generation_jobs")
+        .select("id, status, progress_percent, current_stage, eta_seconds")
+        .eq("user_id", user.id)
+        .not("status", "in", '("completed","failed")')
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      setActiveJob(data);
+    };
+    checkActiveJobs();
   }, [user]);
 
   const loadLibrary = async () => {
@@ -169,6 +184,23 @@ export default function Library() {
     <div className="min-h-screen bg-background">
       <Navbar />
       <div className="container mx-auto max-w-5xl px-4 pt-24 pb-16">
+        {/* Active generation banner */}
+        {activeJob && (
+          <div
+            className="mb-6 cursor-pointer rounded-2xl border border-primary/30 bg-card/95 backdrop-blur-md shadow-lg p-4 space-y-2"
+            onClick={() => navigate(`/generating/${activeJob.id}`)}
+          >
+            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <Sparkles className="h-4 w-4 text-primary animate-pulse" />
+              게임 생성 중 — 터치하여 확인
+            </div>
+            <Progress value={activeJob.progress_percent || 0} className="h-2" />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>{activeJob.current_stage}</span>
+              <span>{activeJob.progress_percent || 0}%</span>
+            </div>
+          </div>
+        )}
         <div className="mb-8 flex items-center justify-between">
           <h1 className="font-display text-2xl font-bold text-foreground">내 스토리 라이브러리</h1>
           <span className="text-sm text-muted-foreground">
