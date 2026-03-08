@@ -53,7 +53,7 @@ export default function StoryReader() {
     setStory(storyData);
 
     // Prefer finished session, fallback to latest
-    let sessionId: string | null = null;
+    let loadedSessionId: string | null = null;
     const { data: finishedSessions } = await supabase
       .from("story_sessions")
       .select("id, finished")
