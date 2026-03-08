@@ -391,6 +391,24 @@ export default function GamePlay() {
           </div>
         )}
       </div>
+
+      {/* Exit confirmation dialog */}
+      <AlertDialog open={!!exitTarget} onOpenChange={(open) => !open && setExitTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>게임을 나가시겠습니까?</AlertDialogTitle>
+            <AlertDialogDescription>
+              현재 진행 상황은 저장되지만, 이 장면에서 다시 시작됩니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>계속 플레이</AlertDialogCancel>
+            <AlertDialogAction onClick={() => exitTarget === "home" ? navigate("/home") : navigate(-1)}>
+              나가기
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
