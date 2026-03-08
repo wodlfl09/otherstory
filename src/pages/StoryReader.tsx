@@ -63,7 +63,7 @@ export default function StoryReader() {
       .limit(1);
 
     if (finishedSessions?.length) {
-      sessionId = finishedSessions[0].id;
+      loadedSessionId = finishedSessions[0].id;
       setSessionFinished(true);
     } else {
       const { data: latestSessions } = await supabase
