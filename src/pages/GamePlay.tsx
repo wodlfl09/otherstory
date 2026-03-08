@@ -10,6 +10,7 @@ import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { toast } from "sonner";
 import { Film, ImageIcon, AlertTriangle, Shield, Clock, Brain, Search, ArrowLeft, Home } from "lucide-react";
 import MotionComic from "@/components/MotionComic";
+import ShareCard from "@/components/game/ShareCard";
 import { cn } from "@/lib/utils";
 
 interface Choice {
