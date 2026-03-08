@@ -253,14 +253,14 @@ export default function GamePlay() {
       <div className="sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b border-border/50">
         <div className="max-w-4xl mx-auto px-4 py-2 flex items-center gap-2">
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => session?.finished ? navigate(-1) : setExitTarget("back")}
             className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
             aria-label="뒤로가기"
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
           <button
-            onClick={() => navigate("/home")}
+            onClick={() => session?.finished ? navigate("/home") : setExitTarget("home")}
             className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
             aria-label="홈으로"
           >
