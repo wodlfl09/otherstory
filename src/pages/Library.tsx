@@ -214,6 +214,11 @@ export default function Library() {
                         <span className="text-xs text-muted-foreground">{item.story.protagonist_name}</span>
                       )}
                     </div>
+                    {item.lastPlayedAt && (
+                      <p className="mt-1 text-[11px] text-muted-foreground">
+                        마지막 플레이: {new Date(item.lastPlayedAt).toLocaleDateString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                    )}
                     {item.story?.synopsis && (
                       <p className="mt-2 text-xs text-muted-foreground line-clamp-2">{item.story.synopsis}</p>
                     )}
