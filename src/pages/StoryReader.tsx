@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { RotateCcw, ChevronLeft, ChevronRight, BookOpen, Loader2 } from "lucide-react";
+import { RotateCcw, ChevronLeft, ChevronRight, BookOpen, Loader2, Globe } from "lucide-react";
+import PublishModal from "@/components/PublishModal";
 
 interface SceneNode {
   step: number;
