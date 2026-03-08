@@ -31,6 +31,7 @@ export default function CreateStory() {
   const [upgradeModal, setUpgradeModal] = useState<{ open: boolean; feature: string; plan: string }>({
     open: false, feature: "", plan: "",
   });
+  const [creditModal, setCreditModal] = useState(false);
 
   const plan = profile?.plan || "free";
 
