@@ -16,6 +16,8 @@ interface MotionCardProps {
   motionPreset: MotionPreset;
   delay: number;
   onClick: () => void;
+  /** Hide all text overlays — used for background-only mode */
+  hideOverlay?: boolean;
 }
 
 const GENRE_LABELS: Record<string, string> = {
