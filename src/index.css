@@ -193,3 +193,130 @@
     opacity: 1 !important;
   }
 }
+
+/* ─── Gallery Masonry ─── */
+.gallery-masonry {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+@media (min-width: 640px) {
+  .gallery-masonry {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+  }
+}
+@media (min-width: 1024px) {
+  .gallery-masonry {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.25rem;
+  }
+}
+
+/* Card reveal */
+.gallery-card-hidden {
+  opacity: 0;
+  transform: translateY(24px);
+}
+.gallery-card-visible {
+  animation: gallery-reveal 0.6s ease-out forwards;
+}
+@keyframes gallery-reveal {
+  0% { opacity: 0; transform: translateY(24px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Hover */
+.gallery-card {
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
+}
+.gallery-card:hover {
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: 0 12px 40px hsl(265 90% 60% / 0.25), 0 0 0 1px hsl(265 90% 60% / 0.15);
+  z-index: 10;
+}
+
+/* ─── Motion presets ─── */
+/* Cinematic: slow zoom + slight pan */
+@keyframes gallery-cinematic {
+  0%   { transform: scale(1) translate(0, 0); }
+  50%  { transform: scale(1.07) translate(-2%, -1%); }
+  100% { transform: scale(1) translate(0, 0); }
+}
+.gallery-motion-cinematic {
+  animation: gallery-cinematic 7s ease-in-out infinite;
+}
+
+/* Noir: subtle parallax + shake */
+@keyframes gallery-noir {
+  0%, 100% { transform: scale(1.02) translate(0, 0); }
+  25%  { transform: scale(1.04) translate(1%, -0.5%); }
+  50%  { transform: scale(1.02) translate(-0.5%, 1%); }
+  75%  { transform: scale(1.04) translate(0.5%, 0.5%); }
+}
+.gallery-motion-noir {
+  animation: gallery-noir 5s ease-in-out infinite;
+}
+
+/* Soft: gentle pan */
+@keyframes gallery-soft {
+  0%, 100% { transform: scale(1.03) translate(0, 0); }
+  50%  { transform: scale(1.03) translate(-1.5%, -1%); }
+}
+.gallery-motion-soft {
+  animation: gallery-soft 8s ease-in-out infinite;
+}
+
+/* Noir scanline overlay */
+.gallery-noir-scanline {
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    hsl(200 100% 55% / 0.03) 2px,
+    hsl(200 100% 55% / 0.03) 4px
+  );
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+.gallery-card:hover .gallery-noir-scanline {
+  opacity: 1;
+}
+
+/* Cinematic light sweep */
+@keyframes gallery-sweep {
+  0%   { transform: translateX(-100%) rotate(15deg); }
+  100% { transform: translateX(200%) rotate(15deg); }
+}
+.gallery-light-sweep {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    hsl(265 90% 80% / 0.08) 40%,
+    hsl(200 100% 80% / 0.12) 60%,
+    transparent 100%
+  );
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.gallery-card:hover .gallery-light-sweep {
+  opacity: 1;
+  animation: gallery-sweep 2s ease-out 0.2s forwards;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .gallery-motion-cinematic,
+  .gallery-motion-noir,
+  .gallery-motion-soft {
+    animation: none !important;
+  }
+  .gallery-card-visible {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .gallery-card:hover {
+    transform: none !important;
+  }
+}
