@@ -151,10 +151,20 @@ export default function StoryReader() {
               <p className="text-sm text-muted-foreground mt-2">{story.synopsis}</p>
             )}
           </div>
-          <Button variant="outline" size="sm" onClick={handleReplay} disabled={replayLoading} className="gap-2 shrink-0">
-            {replayLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
-            재진행
-          </Button>
+          <div className="flex gap-2 shrink-0">
+            <Button variant="outline" size="sm" onClick={() => setPublishGameOpen(true)} className="gap-2">
+              <Globe className="h-4 w-4" />게임 공개
+            </Button>
+            {sessionFinished && sessionId && (
+              <Button variant="outline" size="sm" onClick={() => setPublishNovelOpen(true)} className="gap-2">
+                <BookOpen className="h-4 w-4" />소설 공개
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={handleReplay} disabled={replayLoading} className="gap-2">
+              {replayLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+              재진행
+            </Button>
+          </div>
         </div>
 
         {/* Scene navigation sidebar + main content */}
