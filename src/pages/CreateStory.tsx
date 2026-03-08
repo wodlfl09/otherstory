@@ -48,6 +48,13 @@ export default function CreateStory() {
     if (!user) return;
     if (!name.trim()) { toast.error("이름을 입력해주세요."); return; }
 
+    // Check credits before calling edge function
+    const currentCredits = profile?.credits ?? 0;
+    if (currentCredits < 10) {
+      setCreditModal(true);
+      return;
+    }
+
     const dur = parseInt(duration);
     if (dur > 10 && !checkPlanAccess(`${dur}분 플레이`, dur > 20 ? "pro" : "basic")) return;
     if (choicesCount === "3" && !checkPlanAccess("선택지 3개", "basic")) return;
@@ -72,7 +79,11 @@ export default function CreateStory() {
       if (data?.error) throw new Error(data.error);
       navigate(`/game/${data.session_id}`);
     } catch (err: any) {
-      toast.error(err.message || "세션 생성에 실패했습니다.");
+      if (err.message?.includes("크레딧이 부족")) {
+        setCreditModal(true);
+      } else {
+        toast.error(err.message || "세션 생성에 실패했습니다.");
+      }
     } finally {
       setLoading(false);
     }
