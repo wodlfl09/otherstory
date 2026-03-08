@@ -39,6 +39,7 @@ const FEEDBACK_ICONS: Record<string, { icon: typeof Search; color: string; label
 };
 
 export default function GamePlay() {
+  const navigate = useNavigate();
   const { sessionId } = useParams<{ sessionId: string }>();
   const [node, setNode] = useState<StoryNode | null>(null);
   const [session, setSession] = useState<any>(null);
