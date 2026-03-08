@@ -5,6 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { toast } from "sonner";
+import { Film, FilmOff } from "lucide-react";
+import MotionComic from "@/components/MotionComic";
 
 interface Choice {
   id: string;
