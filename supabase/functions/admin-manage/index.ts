@@ -100,19 +100,28 @@ serve(async (req) => {
         throw new Error("크레딧 차감은 관리자만 가능합니다.");
       }
 
+      // Resolve target: support both UUID and email
+      let resolvedUserId = target_user_id;
+      if (target_user_id.includes("@")) {
+        const { data: authUsers } = await supabase.auth.admin.listUsers();
+        const found = authUsers?.users?.find((u: any) => u.email === target_user_id);
+        if (!found) throw new Error("해당 이메일의 유저를 찾을 수 없습니다.");
+        resolvedUserId = found.id;
+      }
+
       const { data: targetProfile } = await supabase
         .from("profiles")
-        .select("credits")
-        .eq("user_id", target_user_id)
-        .single();
+        .select("credits, user_id")
+        .eq("user_id", resolvedUserId)
+        .maybeSingle();
       if (!targetProfile) throw new Error("Target user not found");
 
       await supabase.from("profiles").update({
         credits: targetProfile.credits + delta,
-      }).eq("user_id", target_user_id);
+      }).eq("user_id", resolvedUserId);
 
       await supabase.from("credits_ledger").insert({
-        user_id: target_user_id,
+        user_id: resolvedUserId,
         delta,
         reason: reason || `admin_adjust_by_${callerRole}`,
         meta: { admin_id: user.id },

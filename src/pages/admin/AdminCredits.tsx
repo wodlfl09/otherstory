@@ -53,8 +53,8 @@ export default function AdminCredits() {
 
       <div className="space-y-3">
         <div>
-          <Label>대상 User ID</Label>
-          <Input value={targetId} onChange={(e) => setTargetId(e.target.value)} placeholder="UUID" className="bg-secondary mt-1" />
+          <Label>대상 User ID 또는 이메일</Label>
+          <Input value={targetId} onChange={(e) => setTargetId(e.target.value)} placeholder="UUID 또는 이메일 주소" className="bg-secondary mt-1" />
         </div>
         <div>
           <Label>{isSubadmin ? "지급할 크레딧" : "크레딧 (+/-)"}</Label>
