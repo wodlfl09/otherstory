@@ -13,17 +13,18 @@ import MotionComic from "@/components/MotionComic";
 import ShareCard from "@/components/game/ShareCard";
 import { cn } from "@/lib/utils";
 
+interface ChoiceFeedback {
+  type: "clue" | "danger" | "trust" | "time" | "sanity";
+  label: string;
+  delta: number;
+}
+
 interface Choice {
   id: string;
   label: string;
   attitude: string;
   next_node_id: string;
-}
-
-interface ChoiceFeedback {
-  type: "clue" | "danger" | "trust" | "time" | "sanity";
-  label: string;
-  delta: number; // positive = good, negative = bad
+  feedback?: ChoiceFeedback[];
 }
 
 interface StoryNode {
@@ -53,7 +54,6 @@ export default function GamePlay() {
   const [choosing, setChoosing] = useState(false);
   const [showAd, setShowAd] = useState(false);
   const [adTimer, setAdTimer] = useState(5);
-  const [imageLoading, setImageLoading] = useState(false);
   const [exitTarget, setExitTarget] = useState<"back" | "home" | null>(null);
   const [feedback, setFeedback] = useState<ChoiceFeedback[] | null>(null);
   const [feedbackVisible, setFeedbackVisible] = useState(false);
@@ -70,50 +70,27 @@ export default function GamePlay() {
     const { data: sess } = await supabase.from("story_sessions").select("*").eq("id", sessionId).single();
     if (!sess) { toast.error("세션을 찾을 수 없습니다."); return; }
     setSession(sess);
-    // Fetch story title
+
     const { data: storyData } = await supabase.from("stories").select("title").eq("id", sess.story_id).single();
     if (storyData) setStoryTitle(storyData.title);
 
     const currentNodeId = (sess as any).current_node_id || "n0";
     const { data: graphNode } = await supabase.from("story_nodes").select("*")
-      .eq("story_id", sess.story_id).eq("node_id", currentNodeId).limit(1).single();
+      .eq("story_id", sess.story_id).eq("node_id", currentNodeId).single();
 
     if (graphNode) {
       const choices = graphNode.choices as unknown;
-      const nodeData: StoryNode = {
+      setNode({
         node_id: graphNode.node_id || currentNodeId,
         step: graphNode.step,
         scene_text: graphNode.scene_text,
         image_url: graphNode.image_url,
         image_prompt: graphNode.image_prompt,
         choices: Array.isArray(choices) ? (choices as Choice[]) : null,
-      };
-      setNode(nodeData);
-      if (!graphNode.image_url && graphNode.image_prompt) generateNodeImage(sess.story_id, currentNodeId);
-    } else {
-      const { data: nodes } = await supabase.from("story_nodes").select("*")
-        .eq("session_id", sessionId).eq("step", sess.step).limit(1);
-      if (nodes && nodes.length > 0) {
-        const n = nodes[0];
-        const choices = n.choices as unknown;
-        setNode({
-          node_id: n.node_id || `step_${n.step}`, step: n.step, scene_text: n.scene_text,
-          image_url: n.image_url, image_prompt: n.image_prompt,
-          choices: Array.isArray(choices) ? (choices as Choice[]) : null,
-        });
-      }
+      });
     }
     setLoading(false);
   };
-
-  const generateNodeImage = useCallback(async (storyId: string, nodeId: string) => {
-    setImageLoading(true);
-    try {
-      const { data } = await supabase.functions.invoke("generate-node-image", { body: { story_id: storyId, node_id: nodeId } });
-      if (data?.image_url) setNode(prev => prev && prev.node_id === nodeId ? { ...prev, image_url: data.image_url } : prev);
-    } catch (err) { console.error("Image gen error:", err); }
-    finally { setImageLoading(false); }
-  }, []);
 
   const checkAdGate = () => {
     if (!session) return false;
@@ -122,27 +99,17 @@ export default function GamePlay() {
     return session.step === (midpoints[session.duration_min as number] ?? 999);
   };
 
-  // Generate feedback based on attitude
-  const generateFeedback = (attitude: string): ChoiceFeedback[] => {
-    const feedbackMap: Record<string, ChoiceFeedback[]> = {
-      positive: [
-        { type: "clue", label: "단서 획득", delta: 1 },
-        { type: "danger", label: "위험 상승", delta: 1 },
-      ],
-      negative: [
-        { type: "danger", label: "위험 급상승", delta: 2 },
-        { type: "sanity", label: "정신력 감소", delta: -1 },
-      ],
-      avoidance: [
-        { type: "time", label: "시간 경과", delta: -1 },
-        { type: "trust", label: "신뢰 하락", delta: -1 },
-      ],
-      neutral: [
-        { type: "clue", label: "단서 획득", delta: 1 },
-        { type: "time", label: "시간 경과", delta: -1 },
-      ],
+  const getFeedbackFromChoice = (choice: Choice): ChoiceFeedback[] => {
+    // Use AI-generated feedback if available
+    if (choice.feedback && choice.feedback.length > 0) return choice.feedback;
+    // Fallback based on attitude
+    const map: Record<string, ChoiceFeedback[]> = {
+      positive: [{ type: "clue", label: "단서 획득", delta: 1 }, { type: "danger", label: "위험 상승", delta: 1 }],
+      negative: [{ type: "danger", label: "위험 급상승", delta: 2 }, { type: "sanity", label: "정신력 감소", delta: -1 }],
+      avoidance: [{ type: "time", label: "시간 경과", delta: -1 }, { type: "trust", label: "신뢰 하락", delta: -1 }],
+      neutral: [{ type: "clue", label: "단서 획득", delta: 1 }, { type: "time", label: "시간 경과", delta: -1 }],
     };
-    return feedbackMap[attitude] || feedbackMap.neutral;
+    return map[choice.attitude] || map.neutral;
   };
 
   const handleChoice = async (choiceId: string) => {
@@ -153,40 +120,35 @@ export default function GamePlay() {
 
     // Show feedback immediately
     if (selectedChoice) {
-      const fb = generateFeedback(selectedChoice.attitude);
+      const fb = getFeedbackFromChoice(selectedChoice);
       setFeedback(fb);
       setFeedbackVisible(true);
     }
 
     try {
-      const isGraphBased = node?.choices?.some(c => c.next_node_id);
-
-      // Wait a moment for feedback to be seen
+      // Wait for feedback to be seen
       await new Promise(resolve => setTimeout(resolve, 1200));
 
-      if (isGraphBased) {
-        const { data, error } = await supabase.functions.invoke("navigate-choice", { body: { session_id: sessionId, choice_id: choiceId } });
-        if (error) throw error;
-        if (data?.error) throw new Error(data.error);
+      // Navigate to next pre-generated node (no AI generation during play)
+      const { data, error } = await supabase.functions.invoke("navigate-choice", {
+        body: { session_id: sessionId, choice_id: choiceId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
-        setFeedbackVisible(false);
-        setFeedback(null);
+      setFeedbackVisible(false);
+      setFeedback(null);
 
-        const nextNode: StoryNode = {
-          node_id: data.node.node_id, step: data.node.step, scene_text: data.node.scene_text,
-          image_url: data.node.image_url, image_prompt: data.node.image_prompt, choices: data.node.choices,
-        };
-        setNode(nextNode);
-        setSession((s: any) => s ? { ...s, step: s.step + 1, current_node_id: data.node.node_id, finished: data.finished } : s);
-        if (!nextNode.image_url && nextNode.image_prompt) generateNodeImage(session.story_id, nextNode.node_id);
-      } else {
-        const { data, error } = await supabase.functions.invoke("choose-and-generate-next", { body: { session_id: sessionId, choice_id: choiceId } });
-        if (error) throw error;
-        if (data?.error) throw new Error(data.error);
-        setFeedbackVisible(false);
-        setFeedback(null);
-        await loadCurrentScene();
-      }
+      const nextNode: StoryNode = {
+        node_id: data.node.node_id,
+        step: data.node.step,
+        scene_text: data.node.scene_text,
+        image_url: data.node.image_url,
+        image_prompt: data.node.image_prompt,
+        choices: data.node.choices,
+      };
+      setNode(nextNode);
+      setSession((s: any) => s ? { ...s, step: s.step + 1, current_node_id: data.node.node_id, finished: data.finished } : s);
     } catch (err: any) {
       toast.error(err.message || "다음 장면 이동에 실패했습니다.");
       setFeedbackVisible(false);
@@ -264,7 +226,6 @@ export default function GamePlay() {
     return (
       <div className="min-h-screen bg-background">
         <div className="max-w-4xl mx-auto px-4 pt-8 pb-16">
-          {/* Ending */}
           <div className="text-center mb-8">
             <h1 className="font-display text-2xl font-bold text-primary">🎬 END</h1>
             <p className="text-sm text-muted-foreground mt-2 max-w-xs mx-auto">{endingMessage}</p>
@@ -278,7 +239,6 @@ export default function GamePlay() {
             <p className="whitespace-pre-wrap leading-relaxed text-foreground text-sm">{node?.scene_text}</p>
           </div>
 
-          {/* Play stats */}
           <div className="grid grid-cols-3 gap-3 mb-6">
             <div className="rounded-xl bg-card/50 backdrop-blur-sm border border-border p-4 text-center">
               <p className="text-lg font-bold text-primary">{session.step || 0}</p>
@@ -294,7 +254,6 @@ export default function GamePlay() {
             </div>
           </div>
 
-          {/* Tendency analysis */}
           {tendencies.length > 0 && (
             <div className="rounded-xl bg-card/50 backdrop-blur-sm border border-border p-5 mb-8">
               <p className="text-xs font-bold text-foreground mb-3">
@@ -319,7 +278,6 @@ export default function GamePlay() {
             </div>
           )}
 
-          {/* Share */}
           <ShareCard
             storyTitle={storyTitle || "토리게임"}
             endingMessage={endingMessage}
@@ -355,26 +313,18 @@ export default function GamePlay() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Top bar — progress + status */}
+      {/* Top bar */}
       <div className="sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b border-border/50">
         <div className="max-w-4xl mx-auto px-4 py-2 flex items-center gap-2">
-          <button
-            onClick={() => session?.finished ? navigate(-1) : setExitTarget("back")}
-            className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-            aria-label="뒤로가기"
-          >
+          <button onClick={() => session?.finished ? navigate(-1) : setExitTarget("back")}
+            className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" aria-label="뒤로가기">
             <ArrowLeft className="h-4 w-4" />
           </button>
-          <button
-            onClick={() => session?.finished ? navigate("/home") : setExitTarget("home")}
-            className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-            aria-label="홈으로"
-          >
+          <button onClick={() => session?.finished ? navigate("/home") : setExitTarget("home")}
+            className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" aria-label="홈으로">
             <Home className="h-4 w-4" />
           </button>
-          <span className="font-display text-[10px] sm:text-xs text-muted-foreground tracking-wider">
-            CH.{(session?.step || 0) + 1}
-          </span>
+          <span className="font-display text-[10px] sm:text-xs text-muted-foreground tracking-wider">CH.{(session?.step || 0) + 1}</span>
           <div className="flex-1 h-1 rounded-full bg-secondary overflow-hidden">
             <div className="h-full rounded-full bg-primary transition-all duration-700 ease-out" style={{ width: `${progressPct}%` }} />
           </div>
@@ -430,7 +380,6 @@ export default function GamePlay() {
       <div className="flex-1 max-w-4xl mx-auto w-full">
         {node && (
           <div className="opacity-0 animate-fade-in">
-            {/* 16:9 Scene Image — full width, immersive */}
             <div className="w-full">
               {node.image_url ? (
                 motionComic ? (
@@ -440,13 +389,6 @@ export default function GamePlay() {
                     <img src={node.image_url} alt={`CH.${node.step + 1}`} className="h-full w-full object-cover" />
                   </AspectRatio>
                 )
-              ) : imageLoading ? (
-                <AspectRatio ratio={16 / 9} className="overflow-hidden bg-secondary border-b border-border">
-                  <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-muted-foreground">
-                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                    <div className="flex items-center gap-1.5 text-xs"><ImageIcon className="h-3.5 w-3.5" />삽화 생성 중...</div>
-                  </div>
-                </AspectRatio>
               ) : (
                 <AspectRatio ratio={16 / 9} className="overflow-hidden bg-secondary border-b border-border">
                   <div className="flex h-full w-full items-center justify-center text-muted-foreground/30">
@@ -456,14 +398,12 @@ export default function GamePlay() {
               )}
             </div>
 
-            {/* Scene text — short, punchy */}
             <div className="px-4 py-5 sm:px-6">
               <p className="whitespace-pre-wrap leading-relaxed text-foreground text-sm sm:text-base">
                 {node.scene_text}
               </p>
             </div>
 
-            {/* Choices — bold, game-like */}
             {node.choices && node.choices.length > 0 && !choosing && (
               <div className="px-4 pb-8 sm:px-6 space-y-2.5">
                 {node.choices.map((choice, i) => {
@@ -498,20 +438,16 @@ export default function GamePlay() {
         )}
       </div>
 
-      {/* Exit confirmation dialog */}
+      {/* Exit confirmation */}
       <AlertDialog open={!!exitTarget} onOpenChange={(open) => !open && setExitTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>게임을 나가시겠습니까?</AlertDialogTitle>
-            <AlertDialogDescription>
-              현재 진행 상황은 저장되지만, 이 장면에서 다시 시작됩니다.
-            </AlertDialogDescription>
+            <AlertDialogDescription>현재 진행 상황은 저장되지만, 이 장면에서 다시 시작됩니다.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>계속 플레이</AlertDialogCancel>
-            <AlertDialogAction onClick={() => exitTarget === "home" ? navigate("/home") : navigate(-1)}>
-              나가기
-            </AlertDialogAction>
+            <AlertDialogAction onClick={() => exitTarget === "home" ? navigate("/home") : navigate(-1)}>나가기</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

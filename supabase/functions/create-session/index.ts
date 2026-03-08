@@ -55,8 +55,7 @@ async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: nu
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const resp = await fetch(url, { ...options, signal: controller.signal });
-    return resp;
+    return await fetch(url, { ...options, signal: controller.signal });
   } finally {
     clearTimeout(id);
   }
@@ -83,7 +82,7 @@ serve(async (req) => {
       const { data: existingTx } = await supabase.from("credit_tx").select("idempotency_key, ref").eq("idempotency_key", idempotency_key).maybeSingle();
       if (existingTx) {
         const ref = existingTx.ref as any;
-        return new Response(JSON.stringify({ session_id: ref?.session_id, duplicate: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ session_id: ref?.session_id, job_id: ref?.job_id, duplicate: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
     }
 
@@ -124,12 +123,31 @@ serve(async (req) => {
     }).select().single();
     if (sessErr) throw sessErr;
 
+    // Build graph structure
+    const graph = buildGraph(totalSteps, choices_count, endings_count);
+
+    // Estimate ETA: ~25s text + ~12s per node for images
+    const etaSeconds = 25 + graph.length * 12;
+
+    // Create generation job
+    const { data: job, error: jobErr } = await supabase.from("generation_jobs").insert({
+      user_id: user.id,
+      story_id: story.id,
+      session_id: session.id,
+      status: "generating_text",
+      progress_percent: 0,
+      current_stage: "스토리 구조 생성 중",
+      eta_seconds: etaSeconds,
+      total_nodes: graph.length,
+      completed_nodes: 0,
+    }).select().single();
+    if (jobErr) throw jobErr;
+
     if (idempotency_key) {
-      await supabase.from("credit_tx").insert({ idempotency_key, user_id: user.id, kind: "create_session", delta: -10, ref: { story_id: story.id, session_id: session.id } });
+      await supabase.from("credit_tx").insert({ idempotency_key, user_id: user.id, kind: "create_session", delta: -10, ref: { story_id: story.id, session_id: session.id, job_id: job.id } });
     }
 
-    // Build graph and generate content via AI
-    const graph = buildGraph(totalSteps, choices_count, endings_count);
+    // Generate text for all nodes via AI
     let generatedNodes: any[] = [];
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
@@ -174,6 +192,7 @@ ${nodeDescs}
 1. ${choices_count}개, 한국어 8~20자
 2. 구체적 행동 동사로 시작
 3. 태도: positive, negative, avoidance
+4. 각 선택지에 feedback 추가 (clue/danger/trust/time/sanity 중 1~2개)
 
 [이미지 규칙]
 1. image_brief: 영어 25단어 이내
@@ -217,6 +236,18 @@ ${nodeDescs}
                                 label: { type: "string" },
                                 attitude: { type: "string", enum: ["positive", "negative", "avoidance"] },
                                 next_node_id: { type: "string" },
+                                feedback: {
+                                  type: "array",
+                                  items: {
+                                    type: "object",
+                                    properties: {
+                                      type: { type: "string", enum: ["clue", "danger", "trust", "time", "sanity"] },
+                                      label: { type: "string" },
+                                      delta: { type: "number" },
+                                    },
+                                    required: ["type", "label", "delta"],
+                                  },
+                                },
                               },
                               required: ["id", "label", "attitude", "next_node_id"],
                             },
@@ -232,7 +263,7 @@ ${nodeDescs}
             }],
             tool_choice: { type: "function", function: { name: "generate_story_graph" } },
           }),
-        }, 50000); // 50s timeout
+        }, 50000);
 
         if (aiResponse.ok) {
           const aiData = await aiResponse.json();
@@ -247,6 +278,7 @@ ${nodeDescs}
       } catch (aiErr) { console.error("AI graph error:", aiErr); }
     }
 
+    // Map generated content to graph nodes
     const generatedMap = new Map(generatedNodes.map((n: any) => [n.node_id, n]));
     const nodesToInsert = graph.map(gn => {
       const gen = generatedMap.get(gn.node_id);
@@ -259,11 +291,13 @@ ${nodeDescs}
           choices = gen.choices.slice(0, choices_count).map((c: any, i: number) => ({
             id: c.id || `c${i}`, label: c.label || `선택지 ${i + 1}`,
             attitude: c.attitude || "neutral", next_node_id: gn.next_node_ids[i] || gn.next_node_ids[0],
+            feedback: c.feedback || [],
           }));
         } else {
           choices = gn.next_node_ids.map((nid, i) => ({
             id: `c${i}`, label: gen?.choices?.[i]?.label || `선택지 ${i + 1}`,
             attitude: ["positive", "negative", "avoidance"][i] || "neutral", next_node_id: nid,
+            feedback: [],
           }));
         }
       }
@@ -276,7 +310,16 @@ ${nodeDescs}
 
     await supabase.from("story_nodes").insert(nodesToInsert);
 
-    return new Response(JSON.stringify({ session_id: session.id }), {
+    // Update job: text done, start images phase
+    const imageEta = graph.length * 12;
+    await supabase.from("generation_jobs").update({
+      status: "generating_images",
+      progress_percent: 20,
+      current_stage: "삽화 생성 중",
+      eta_seconds: imageEta,
+    }).eq("id", job.id);
+
+    return new Response(JSON.stringify({ session_id: session.id, job_id: job.id }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
