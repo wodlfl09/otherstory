@@ -105,3 +105,91 @@
     background: var(--gradient-glow);
   }
 }
+
+/* ─── Motion Comic ─── */
+@keyframes mc-ken-burns {
+  0% {
+    transform: scale(1) translate(var(--kb-start-x, 0%), var(--kb-start-y, 0%));
+  }
+  100% {
+    transform: scale(1.10) translate(var(--kb-end-x, -4%), var(--kb-end-y, -3%));
+  }
+}
+
+@keyframes mc-micro-shake {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(0.3%, -0.2%); }
+  50% { transform: translate(-0.2%, 0.3%); }
+  75% { transform: translate(0.2%, 0.1%); }
+}
+
+@keyframes mc-crossfade {
+  0% { opacity: 0; }
+  8% { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+@keyframes mc-glitch {
+  0%, 94%, 100% { clip-path: inset(0); opacity: 0; }
+  95% { clip-path: inset(30% 0 40% 0); opacity: 0.7; transform: translateX(2%); }
+  96% { clip-path: inset(60% 0 10% 0); opacity: 0.5; transform: translateX(-3%); }
+  97% { clip-path: inset(0); opacity: 0; }
+}
+
+@keyframes mc-text-reveal {
+  0% { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.motion-comic-image {
+  animation: mc-ken-burns 6s ease-out forwards, mc-micro-shake 3s ease-in-out infinite;
+  will-change: transform;
+}
+
+.motion-comic-crossfade {
+  animation: mc-crossfade 0.25s ease-out forwards;
+}
+
+.motion-comic-vignette {
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.45) 100%);
+}
+
+.motion-comic-bloom {
+  background: radial-gradient(ellipse at center, hsl(340 80% 70% / 0.06) 0%, transparent 70%);
+  mix-blend-mode: screen;
+}
+
+.motion-comic-glitch {
+  animation: mc-glitch 8s linear infinite;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    hsl(200 100% 55% / 0.03) 2px,
+    hsl(200 100% 55% / 0.03) 4px
+  );
+}
+
+.motion-comic-text-reveal {
+  animation: mc-text-reveal 0.5s ease-out forwards;
+}
+
+.motion-comic-text-reveal-delay {
+  animation: mc-text-reveal 0.5s ease-out 0.3s forwards;
+  opacity: 0;
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .motion-comic-image {
+    animation: none !important;
+  }
+  .motion-comic-glitch {
+    animation: none !important;
+  }
+  .motion-comic-text-reveal,
+  .motion-comic-text-reveal-delay {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+}

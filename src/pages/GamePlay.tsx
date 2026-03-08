@@ -5,6 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { toast } from "sonner";
+import { Film, X } from "lucide-react";
+import MotionComic from "@/components/MotionComic";
 
 interface Choice {
   id: string;
@@ -27,6 +29,10 @@ export default function GamePlay() {
   const [choosing, setChoosing] = useState(false);
   const [showAd, setShowAd] = useState(false);
   const [adTimer, setAdTimer] = useState(5);
+  const [motionComic, setMotionComic] = useState(() => {
+    const saved = localStorage.getItem("motion-comic");
+    return saved !== null ? saved === "true" : true;
+  });
 
   useEffect(() => {
     loadCurrentScene();
@@ -193,7 +199,21 @@ export default function GamePlay() {
                 }}
               />
             </div>
-            <span>{session.duration_min}분</span>
+            <button
+              onClick={() => {
+                const next = !motionComic;
+                setMotionComic(next);
+                localStorage.setItem("motion-comic", String(next));
+              }}
+              className={`flex items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors ${
+                motionComic ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
+              }`}
+              title={motionComic ? "Motion Comic OFF" : "Motion Comic ON"}
+            >
+              <Film className="h-3.5 w-3.5" />
+              {motionComic ? "MC" : "MC"}
+            </button>
+            <span className="ml-2">{session.duration_min}분</span>
           </div>
         )}
 
@@ -202,17 +222,25 @@ export default function GamePlay() {
           <div className="space-y-6 opacity-0 animate-fade-in">
             {/* 16:9 Scene Image */}
             {node.image_url && (
-              <AspectRatio ratio={16 / 9} className="overflow-hidden rounded-xl border border-border shadow-lg">
-                <img
-                  src={node.image_url}
-                  alt={`장면 ${node.step + 1} 삽화`}
-                  className="h-full w-full object-cover"
+              motionComic ? (
+                <MotionComic
+                  imageUrl={node.image_url}
+                  genre={(session?.state as any)?.genre || "sf"}
+                  step={node.step}
                 />
-              </AspectRatio>
+              ) : (
+                <AspectRatio ratio={16 / 9} className="overflow-hidden rounded-xl border border-border shadow-lg">
+                  <img
+                    src={node.image_url}
+                    alt={`장면 ${node.step + 1} 삽화`}
+                    className="h-full w-full object-cover"
+                  />
+                </AspectRatio>
+              )
             )}
 
             {/* Scene Text */}
-            <div className="rounded-xl border border-border bg-card p-6 md:p-8">
+            <div className={`rounded-xl border border-border bg-card p-6 md:p-8 ${motionComic ? "motion-comic-text-reveal" : ""}`}>
               <p className="whitespace-pre-wrap leading-[1.9] text-foreground text-[15px]">
                 {node.scene_text}
               </p>
@@ -220,7 +248,7 @@ export default function GamePlay() {
 
             {/* Choices */}
             {node.choices && node.choices.length > 0 && (
-              <div className="space-y-3">
+              <div className={`space-y-3 ${motionComic ? "motion-comic-text-reveal-delay" : ""}`}>
                 {node.choices.map((choice, i) => {
                   const colorClass = attitudeColors[choice.attitude] || attitudeColors.neutral;
                   const icon = attitudeIcons[choice.attitude] || "🤔";
