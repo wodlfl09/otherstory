@@ -159,7 +159,7 @@ export default function StoryReader() {
         <div className="mb-6 flex items-start justify-between gap-4">
           <div className="space-y-1">
             <h1 className="font-display text-2xl font-bold text-foreground">{story?.title}</h1>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Badge variant="outline">{GENRE_LABELS[story?.genre] || story?.genre}</Badge>
               {story?.protagonist_name && (
                 <span className="text-sm text-muted-foreground">{story.protagonist_name}</span>
@@ -167,18 +167,35 @@ export default function StoryReader() {
               {sessionFinished && (
                 <Badge className="bg-primary/20 text-primary border-primary/30">완주</Badge>
               )}
+              {isGamePublished && (
+                <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-[10px]">게임 공개됨</Badge>
+              )}
+              {isNovelPublished && (
+                <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-[10px]">소설 공개됨</Badge>
+              )}
             </div>
             {story?.synopsis && (
               <p className="text-sm text-muted-foreground mt-2">{story.synopsis}</p>
             )}
           </div>
-          <div className="flex gap-2 shrink-0">
-            <Button variant="outline" size="sm" onClick={() => setPublishGameOpen(true)} className="gap-2">
-              <Globe className="h-4 w-4" />게임 공개
-            </Button>
-            {sessionFinished && sessionId && (
+          <div className="flex gap-2 shrink-0 flex-wrap">
+            {!isGamePublished ? (
+              <Button variant="outline" size="sm" onClick={() => setPublishGameOpen(true)} className="gap-2">
+                <Globe className="h-4 w-4" />게임 공개
+              </Button>
+            ) : (
+              <Button variant="ghost" size="sm" disabled className="gap-2 opacity-60">
+                <Globe className="h-4 w-4" />공개됨
+              </Button>
+            )}
+            {sessionFinished && sessionId && !isNovelPublished && (
               <Button variant="outline" size="sm" onClick={() => setPublishNovelOpen(true)} className="gap-2">
                 <BookOpen className="h-4 w-4" />소설 공개
+              </Button>
+            )}
+            {sessionFinished && sessionId && isNovelPublished && (
+              <Button variant="ghost" size="sm" disabled className="gap-2 opacity-60">
+                <BookOpen className="h-4 w-4" />소설 공개됨
               </Button>
             )}
             <Button variant="outline" size="sm" onClick={handleReplay} disabled={replayLoading} className="gap-2">
