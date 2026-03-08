@@ -23,48 +23,34 @@ export default function GenerationWait() {
   const processingRef = useRef(false);
   const mountedRef = useRef(true);
 
-  // Load initial job data
+  // Poll job status every 2 seconds
   useEffect(() => {
     if (!jobId) return;
     mountedRef.current = true;
 
-    const loadJob = async () => {
+    const pollJob = async () => {
       const { data } = await supabase
         .from("generation_jobs")
         .select("*")
         .eq("id", jobId)
         .single();
+      if (!mountedRef.current) return;
       if (data) {
         setJob(data);
-        if (data.status === "completed") {
+        if (data.status === "completed" && !completeModal) {
           setCompleteModal(true);
+          requestBrowserNotification();
         }
       }
       setLoading(false);
     };
-    loadJob();
 
-    // Subscribe to realtime updates
-    const channel = supabase
-      .channel(`job-${jobId}`)
-      .on("postgres_changes", {
-        event: "UPDATE",
-        schema: "public",
-        table: "generation_jobs",
-        filter: `id=eq.${jobId}`,
-      }, (payload) => {
-        if (!mountedRef.current) return;
-        setJob(payload.new);
-        if (payload.new.status === "completed") {
-          setCompleteModal(true);
-          requestBrowserNotification();
-        }
-      })
-      .subscribe();
+    pollJob();
+    const interval = setInterval(pollJob, 2000);
 
     return () => {
       mountedRef.current = false;
-      supabase.removeChannel(channel);
+      clearInterval(interval);
     };
   }, [jobId]);
 
@@ -84,7 +70,6 @@ export default function GenerationWait() {
         return;
       }
 
-      // Continue processing next image after a short delay
       processingRef.current = false;
       if (mountedRef.current && !data?.done) {
         setTimeout(() => processNextImage(), 500);
@@ -92,7 +77,6 @@ export default function GenerationWait() {
     } catch (err) {
       console.error("Image processing error:", err);
       processingRef.current = false;
-      // Retry after delay
       if (mountedRef.current) {
         setTimeout(() => processNextImage(), 3000);
       }
@@ -112,7 +96,6 @@ export default function GenerationWait() {
     }
   };
 
-  // Request notification permission on mount
   useEffect(() => {
     if ("Notification" in window && Notification.permission === "default") {
       Notification.requestPermission();
