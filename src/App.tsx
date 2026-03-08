@@ -9,6 +9,7 @@ import Auth from "@/pages/Auth";
 import Home from "@/pages/Home";
 import CreateStory from "@/pages/CreateStory";
 import GamePlay from "@/pages/GamePlay";
+import GenerationWait from "@/pages/GenerationWait";
 import Library from "@/pages/Library";
 import Pricing from "@/pages/Pricing";
 import AdultVerify from "@/pages/AdultVerify";
