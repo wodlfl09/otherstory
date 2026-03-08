@@ -67,9 +67,16 @@ export default function MasonryGallery() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selected, setSelected] = useState<GalleryItem | null>(null);
 
+  const [activeGenre, setActiveGenre] = useState<string>("all");
+
   useEffect(() => {
     loadAll();
   }, []);
+
+  const filteredItems = useMemo(() => {
+    if (activeGenre === "all") return items;
+    return items.filter((item) => item.genre === activeGenre);
+  }, [items, activeGenre]);
 
   const loadAll = async () => {
     setLoading(true);
