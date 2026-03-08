@@ -7,14 +7,9 @@ import { cn } from "@/lib/utils";
 
 const GENRE_FILTERS = [
   { key: "all", label: "전체" },
-  { key: "sf", label: "SF" },
-  { key: "fantasy", label: "판타지" },
-  { key: "mystery", label: "추리" },
-  { key: "action", label: "액션" },
   { key: "horror", label: "공포" },
-  { key: "romance", label: "로맨스" },
-  { key: "comic", label: "코믹" },
-  { key: "martial", label: "무협" },
+  { key: "mystery", label: "미스터리" },
+  { key: "action", label: "스릴러" },
 ] as const;
 
 interface PublicGame {
