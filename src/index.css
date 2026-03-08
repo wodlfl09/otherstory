@@ -335,3 +335,9 @@
     transform: none !important;
   }
 }
+
+/* Background mode — hide text overlays on cards */
+.gallery-bg-mode .gallery-card > div:last-child,
+.gallery-bg-mode .gallery-card > div:nth-last-child(2) {
+  display: none;
+}
