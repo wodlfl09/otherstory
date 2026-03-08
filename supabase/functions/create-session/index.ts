@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 interface GraphNodeDef {
@@ -51,6 +51,17 @@ function buildGraph(totalSteps: number, choicesCount: number, endingsCount: numb
   return nodes;
 }
 
+async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number): Promise<Response> {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const resp = await fetch(url, { ...options, signal: controller.signal });
+    return resp;
+  } finally {
+    clearTimeout(id);
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -65,7 +76,6 @@ serve(async (req) => {
     const body = await req.json();
     const { genre, name, gender, protagonist, keywords, customStory, duration_min, choices_count, endings_count, idempotency_key } = body;
 
-    // Validate genre restriction
     const allowedGenres = ["horror", "mystery", "action"];
     if (!allowedGenres.includes(genre)) throw new Error("현재 공포, 미스터리, 스릴러 장르만 지원합니다.");
 
@@ -94,33 +104,7 @@ serve(async (req) => {
     const totalStepsMap: Record<number, number> = { 10: 7, 20: 13, 30: 19 };
     const totalSteps = totalStepsMap[duration_min] ?? 7;
 
-    // Generate character_bible
-    let characterBible: any = null;
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (LOVABLE_API_KEY) {
-      try {
-        const bibleResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            model: "google/gemini-2.5-flash-lite",
-            messages: [
-              { role: "system", content: "Generate a character bible for consistent dark cinematic image generation. Output JSON only." },
-              { role: "user", content: `Genre: ${genre} (dark thriller/horror tone). Character: ${name} (${gender}). ${protagonist ? `Description: ${protagonist}` : ""}. Create a visual character bible with dark, cinematic semi-realistic aesthetic.` },
-            ],
-            tools: [{ type: "function", function: { name: "create_character_bible", description: "Create character visual description", parameters: { type: "object", properties: { name: { type: "string" }, gender: { type: "string" }, appearance: { type: "object", properties: { hair: { type: "string" }, eyes: { type: "string" }, build: { type: "string" }, clothing: { type: "string" }, distinctive_features: { type: "string" } } } }, required: ["name", "gender", "appearance"] } } }],
-            tool_choice: { type: "function", function: { name: "create_character_bible" } },
-          }),
-        });
-        if (bibleResp.ok) {
-          const bd = await bibleResp.json();
-          const tc = bd.choices?.[0]?.message?.tool_calls?.[0];
-          if (tc) characterBible = JSON.parse(tc.function.arguments);
-        }
-      } catch (err) { console.error("Character bible error:", err); }
-    }
-
-    const storyConfig = { name, gender, protagonist, keywords, customStory, duration_min, choices_count, endings_count, total_steps: totalSteps, character_bible: characterBible };
+    const storyConfig = { name, gender, protagonist, keywords, customStory, duration_min, choices_count, endings_count, total_steps: totalSteps };
     const { data: story, error: storyErr } = await supabase.from("stories").insert({
       user_id: user.id, title: `${genre} 모험 - ${name}`, genre,
       source_type: customStory ? "custom" : "simple", config: storyConfig, protagonist_name: name,
@@ -144,9 +128,10 @@ serve(async (req) => {
       await supabase.from("credit_tx").insert({ idempotency_key, user_id: user.id, kind: "create_session", delta: -10, ref: { story_id: story.id, session_id: session.id } });
     }
 
-    // Build graph and generate all content via AI — GAME-STYLE short text
+    // Build graph and generate content via AI
     const graph = buildGraph(totalSteps, choices_count, endings_count);
     let generatedNodes: any[] = [];
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     if (LOVABLE_API_KEY) {
       try {
@@ -169,7 +154,6 @@ serve(async (req) => {
 [핵심 원칙]
 - 이것은 "읽는 소설"이 아니라 "판단하는 게임"입니다
 - 장면은 짧고 강렬하게. 긴장감과 선택의 무게감이 핵심
-- 플레이어가 매 장면에서 "내가 뭘 해야 하지?"를 느껴야 합니다
 
 주인공: ${name} (${gender === "male" ? "남성" : "여성"})
 ${protagonist ? `설정: ${protagonist}` : ""}
@@ -179,38 +163,34 @@ ${customStory ? `세계관: ${customStory}` : ""}
 스토리 구조 (총 ${graph.length}개 노드):
 ${nodeDescs}
 
-[장면 텍스트 규칙 — 중요!]
-1. 한국어 220~350자 (3~5문장). 절대 이 범위를 넘기지 마세요.
-2. 설명이 아닌 "장면"을 보여주세요. 카메라가 비추는 것처럼.
-3. 과거형 서술체 ("~했다", "~였다")
-4. 매 장면 마지막은 선택의 갈림길 — 긴장감 극대화
-5. 금지: 장황한 배경 설명, 내면 독백, 진부한 표현
-6. 필수: 소리/촉감/시각 중 최소 1가지 감각 묘사
+[장면 텍스트 규칙]
+1. 한국어 220~350자 (3~5문장)
+2. 카메라가 비추는 것처럼 장면을 보여주세요
+3. 과거형 서술체
+4. 매 장면 마지막은 선택의 갈림길
+5. 필수: 감각 묘사 최소 1가지
 
 [선택지 규칙]
 1. ${choices_count}개, 한국어 8~20자
-2. 구체적 행동 동사로 시작 (예: "문을 열다", "도망치다", "총을 겨누다")
-3. 각 선택지가 명확히 다른 결과를 암시
-4. 태도: positive(적극적/대결), negative(강경한/공격적), avoidance(회피/도주)
+2. 구체적 행동 동사로 시작
+3. 태도: positive, negative, avoidance
 
 [이미지 규칙]
 1. image_brief: 영어 25단어 이내
-2. 다크 시네마틱 반실사 톤 (dark cinematic semi-realistic, dramatic lighting, moody atmosphere)
-3. 핵심 장면(n0, 엔딩)은 특히 강렬한 구도
+2. 다크 시네마틱 반실사 톤
 
 [엔딩 규칙]
 1. 선택지 없음
-2. 짧고 여운 있는 결말 (200~300자)
-3. 플레이어의 선택 경로가 반영된 결과`;
+2. 짧고 여운 있는 결말 (200~300자)`;
 
-        const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        const aiResponse = await fetchWithTimeout("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
           headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: "google/gemini-2.5-flash",
+            model: "google/gemini-2.5-flash-lite",
             messages: [
               { role: "system", content: systemPrompt },
-              { role: "user", content: `위 구조에 맞는 전체 ${graph.length}개 노드를 생성하세요. 장면당 220~350자, 선택지 8~20자를 엄격히 지켜주세요.` },
+              { role: "user", content: `위 구조에 맞는 전체 ${graph.length}개 노드를 생성하세요.` },
             ],
             tools: [{
               type: "function",
@@ -226,15 +206,15 @@ ${nodeDescs}
                         type: "object",
                         properties: {
                           node_id: { type: "string" },
-                          scene_text: { type: "string", description: "220-350자 한국어 장면" },
-                          image_brief: { type: "string", description: "영어 25단어 이내, dark cinematic semi-realistic" },
+                          scene_text: { type: "string" },
+                          image_brief: { type: "string" },
                           choices: {
                             type: "array",
                             items: {
                               type: "object",
                               properties: {
                                 id: { type: "string" },
-                                label: { type: "string", description: "한국어 8-20자, 행동 동사" },
+                                label: { type: "string" },
                                 attitude: { type: "string", enum: ["positive", "negative", "avoidance"] },
                                 next_node_id: { type: "string" },
                               },
@@ -252,7 +232,7 @@ ${nodeDescs}
             }],
             tool_choice: { type: "function", function: { name: "generate_story_graph" } },
           }),
-        });
+        }, 50000); // 50s timeout
 
         if (aiResponse.ok) {
           const aiData = await aiResponse.json();
