@@ -73,6 +73,7 @@ export default function GalleryBackground() {
             motionPreset={getMotionPreset(item.genre)}
             delay={i * 80}
             onClick={() => {}}
+            hideOverlay
           />
         ))}
       </div>
