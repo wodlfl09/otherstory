@@ -16,6 +16,8 @@ interface MotionCardProps {
   motionPreset: MotionPreset;
   delay: number;
   onClick: () => void;
+  /** Hide all text overlays — used for background-only mode */
+  hideOverlay?: boolean;
 }
 
 const GENRE_LABELS: Record<string, string> = {
@@ -41,7 +43,7 @@ export function getRandomSpan(index: number): "tall" | "wide" | "normal" {
 }
 
 export default function MotionCard({
-  type, title, genre, coverUrl, likeCount, span, motionPreset, delay, onClick,
+  type, title, genre, coverUrl, likeCount, span, motionPreset, delay, onClick, hideOverlay,
 }: MotionCardProps) {
   const cardRef = useRef<HTMLButtonElement>(null);
   const [visible, setVisible] = useState(false);
@@ -115,33 +117,38 @@ export default function MotionCard({
         <div className="absolute inset-0 gallery-light-sweep pointer-events-none" />
       )}
 
-      {/* Like indicator — top right, always visible */}
-      {likeCount > 0 && (
-        <div className="absolute top-2 right-2 z-10 flex items-center gap-1 rounded-full bg-black/50 backdrop-blur-sm px-2 py-1">
-          <Heart className="h-3 w-3 text-primary fill-primary" />
-          <span className="text-[10px] font-medium text-foreground/90">{likeCount}</span>
-        </div>
-      )}
-
-      {/* Content overlay — bottom, minimal */}
-      <div className="absolute bottom-0 left-0 right-0 p-3 z-10 translate-y-0.5 group-hover:translate-y-0 transition-transform duration-300">
-        <h3 className="font-medium text-xs sm:text-sm text-foreground line-clamp-2 drop-shadow-lg">
-          {title}
-        </h3>
-        <div className="flex items-center gap-1.5 mt-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-          {genre && (
-            <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-foreground/20 text-foreground/70 bg-background/20 backdrop-blur-sm">
-              {GENRE_LABELS[genre] || genre}
-            </Badge>
+      {/* Text overlays — hidden in background mode */}
+      {!hideOverlay && (
+        <>
+          {/* Like indicator */}
+          {likeCount > 0 && (
+            <div className="absolute top-2 right-2 z-10 flex items-center gap-1 rounded-full bg-black/50 backdrop-blur-sm px-2 py-1">
+              <Heart className="h-3 w-3 text-primary fill-primary" />
+              <span className="text-[10px] font-medium text-foreground/90">{likeCount}</span>
+            </div>
           )}
-          <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-foreground/20 text-foreground/70 bg-background/20 backdrop-blur-sm">
-            {type === "game" ? "게임" : "소설"}
-          </Badge>
-        </div>
-      </div>
 
-      {/* Hover glow ring */}
-      <div className="absolute inset-0 rounded-lg border border-transparent group-hover:border-primary/30 transition-colors duration-300 pointer-events-none" />
+          {/* Content overlay — bottom */}
+          <div className="absolute bottom-0 left-0 right-0 p-3 z-10 translate-y-0.5 group-hover:translate-y-0 transition-transform duration-300">
+            <h3 className="font-medium text-xs sm:text-sm text-foreground line-clamp-2 drop-shadow-lg">
+              {title}
+            </h3>
+            <div className="flex items-center gap-1.5 mt-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              {genre && (
+                <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-foreground/20 text-foreground/70 bg-background/20 backdrop-blur-sm">
+                  {GENRE_LABELS[genre] || genre}
+                </Badge>
+              )}
+              <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-foreground/20 text-foreground/70 bg-background/20 backdrop-blur-sm">
+                {type === "game" ? "게임" : "소설"}
+              </Badge>
+            </div>
+          </div>
+
+          {/* Hover glow ring */}
+          <div className="absolute inset-0 rounded-lg border border-transparent group-hover:border-primary/30 transition-colors duration-300 pointer-events-none" />
+        </>
+      )}
     </button>
   );
 }
