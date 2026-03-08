@@ -35,6 +35,8 @@ export default function StoryReader() {
   const [replayLoading, setReplayLoading] = useState(false);
   const [sessionFinished, setSessionFinished] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [isGamePublished, setIsGamePublished] = useState(false);
+  const [isNovelPublished, setIsNovelPublished] = useState(false);
   const [publishGameOpen, setPublishGameOpen] = useState(false);
   const [publishNovelOpen, setPublishNovelOpen] = useState(false);
 
