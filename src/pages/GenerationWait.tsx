@@ -273,6 +273,14 @@ export default function GenerationWait() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete confirmation dialog */}
+      <DeleteGameDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        onConfirm={handleDeleteGame}
+        loading={deleting}
+      />
     </div>
   );
 }
