@@ -411,6 +411,7 @@ export default function GamePlay() {
       <div className="flex-1 max-w-4xl mx-auto w-full">
         {node && (
           <div className="opacity-0 animate-fade-in">
+            {/* Image - full width, prioritized */}
             <div className="w-full">
               {node.image_url ? (
                 motionComic ? (
@@ -429,14 +430,16 @@ export default function GamePlay() {
               )}
             </div>
 
-            <div className="px-4 py-5 sm:px-6">
-              <p className="whitespace-pre-wrap leading-relaxed text-foreground text-sm sm:text-base">
+            {/* Scene text */}
+            <div className="px-4 py-4 sm:px-6 sm:py-5">
+              <p className="whitespace-pre-wrap leading-[1.8] text-foreground text-[15px] sm:text-base">
                 {node.scene_text}
               </p>
             </div>
 
+            {/* Choices - big touch targets for mobile */}
             {node.choices && node.choices.length > 0 && !choosing && (
-              <div className="px-4 pb-8 sm:px-6 space-y-2.5">
+              <div className="px-4 pb-8 sm:px-6 space-y-3">
                 {node.choices.map((choice, i) => {
                   const style = attitudeStyles[choice.attitude] || attitudeStyles.neutral;
                   return (
@@ -445,14 +448,15 @@ export default function GamePlay() {
                       disabled={choosing}
                       onClick={() => handleChoice(choice.id)}
                       className={cn(
-                        "w-full flex items-center gap-3 rounded-xl border-2 bg-card/50 backdrop-blur-sm p-4 text-left transition-all duration-200",
+                        "w-full flex items-center gap-3 rounded-xl border-2 bg-card/50 backdrop-blur-sm text-left transition-all duration-200",
+                        "min-h-[56px] px-4 py-3.5 sm:p-4",
                         "disabled:opacity-50 opacity-0 animate-fade-in active:scale-[0.98]",
                         style.border, style.glow
                       )}
                       style={{ animationDelay: `${200 + i * 100}ms` }}
                     >
-                      <span className="text-lg shrink-0">{style.icon}</span>
-                      <span className="flex-1 text-sm font-medium text-foreground leading-snug">{choice.label}</span>
+                      <span className="text-xl sm:text-lg shrink-0">{style.icon}</span>
+                      <span className="flex-1 text-sm sm:text-sm font-medium text-foreground leading-snug">{choice.label}</span>
                     </button>
                   );
                 })}
