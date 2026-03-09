@@ -110,6 +110,7 @@ export default function GenerationWait() {
     }
   };
 
+  const requestBrowserNotification = () => {
     if ("Notification" in window && Notification.permission === "granted") {
       new Notification("게임 생성 완료!", { body: "게임이 준비되었습니다. 지금 시작하세요!", icon: "/favicon.ico" });
     }
