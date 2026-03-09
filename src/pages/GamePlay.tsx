@@ -113,16 +113,31 @@ export default function GamePlay() {
     setLoading(false);
   };
 
-  const checkAdGate = (choiceId: string) => {
+  const checkEndingAdGate = async (choiceId: string): Promise<boolean> => {
     if (!session || !node) return false;
-    if (session.ad_shown || !session.ad_required) return false;
-    // Only show ad before the final ending
+    if (session.ad_shown) return false;
+
+    // Check if the selected choice leads to an ending node (no further choices)
     const selectedChoice = node.choices?.find(c => c.id === choiceId);
-    if (!selectedChoice) return false;
-    // Check if next node is an ending (no further choices)
-    // We detect this by checking if we're at the second-to-last step
-    const totalSteps = session.duration_min === 10 ? 7 : session.duration_min === 20 ? 13 : 19;
-    return session.step >= totalSteps - 2;
+    if (!selectedChoice?.next_node_id) return false;
+
+    // Peek at next node to see if it's an ending
+    const { data: nextNode } = await supabase.from("story_nodes")
+      .select("choices")
+      .eq("story_id", session.story_id)
+      .eq("node_id", selectedChoice.next_node_id)
+      .single();
+
+    const isEnding = !nextNode?.choices || (nextNode.choices as any[]).length === 0;
+    if (!isEnding) return false;
+
+    // Only Free plan users see ads
+    const { data: profile } = await supabase.from("profiles")
+      .select("plan")
+      .eq("user_id", session.user_id)
+      .single();
+
+    return profile?.plan === "free";
   };
 
   const getFeedbackFromChoice = (choice: Choice): ChoiceFeedback[] => {
