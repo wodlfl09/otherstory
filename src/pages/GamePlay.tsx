@@ -153,8 +153,17 @@ export default function GamePlay() {
     return map[choice.attitude] || map.neutral;
   };
 
+  const pendingChoiceRef = useRef<string | null>(null);
+
   const handleChoice = async (choiceId: string) => {
-    if (checkAdGate(choiceId)) { setShowAd(true); startAdTimer(); return; }
+    // Check if this choice leads to ending and user needs to see ad
+    const needsAd = await checkEndingAdGate(choiceId);
+    if (needsAd) {
+      pendingChoiceRef.current = choiceId;
+      setShowAd(true);
+      startAdTimer();
+      return;
+    }
 
     const selectedChoice = node?.choices?.find(c => c.id === choiceId);
     setChoosing(true);
