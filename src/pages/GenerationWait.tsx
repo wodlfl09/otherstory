@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Loader2, Sparkles, BookOpen, Clock, CheckCircle2 } from "lucide-react";
+import { Loader2, Sparkles, BookOpen, Clock, CheckCircle2, Trash2 } from "lucide-react";
+import DeleteGameDialog from "@/components/DeleteGameDialog";
 import { cn } from "@/lib/utils";
 
 const STAGE_ICONS: Record<string, typeof Loader2> = {
