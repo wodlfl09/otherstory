@@ -353,20 +353,6 @@ export default function Library() {
         )}
       </div>
 
-      {publishTarget && (
-        <PublishModal
-          open={!!publishTarget}
-          onOpenChange={(val) => { if (!val) setPublishTarget(null); }}
-          mode="game"
-          storyId={publishTarget.storyId}
-          defaults={{
-            title: publishTarget.title,
-            synopsis: publishTarget.synopsis,
-            coverUrl: publishTarget.coverUrl,
-            protagonistName: publishTarget.protagonistName,
-          }}
-        />
-      )}
 
       <DeleteGameDialog
         open={!!deleteTarget}
