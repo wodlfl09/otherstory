@@ -93,7 +93,23 @@ export default function GenerationWait() {
     }
   }, [job?.status, processNextImage]);
 
-  const requestBrowserNotification = () => {
+  const handleDeleteGame = async () => {
+    if (!job) return;
+    setDeleting(true);
+    try {
+      // Soft-delete: set deleted_at on the story
+      await supabase.from("stories").update({ deleted_at: new Date().toISOString() } as any).eq("id", job.story_id);
+      // Mark job as failed/cancelled
+      await supabase.from("generation_jobs").update({ status: "failed", current_stage: "사용자에 의해 취소됨" } as any).eq("id", jobId);
+      toast.success("게임이 삭제되었습니다.");
+      navigate("/home");
+    } catch (err: any) {
+      toast.error(err.message || "삭제 실패");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
     if ("Notification" in window && Notification.permission === "granted") {
       new Notification("게임 생성 완료!", { body: "게임이 준비되었습니다. 지금 시작하세요!", icon: "/favicon.ico" });
     }
