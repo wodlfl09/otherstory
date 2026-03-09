@@ -319,6 +319,13 @@ export default function Library() {
           }}
         />
       )}
+
+      <DeleteGameDialog
+        open={!!deleteTarget}
+        onOpenChange={(v) => { if (!v) setDeleteTarget(null); }}
+        onConfirm={confirmDelete}
+        loading={deletingItem}
+      />
     </div>
   );
 }
