@@ -23,6 +23,7 @@ import AdminUsers from "@/pages/admin/AdminUsers";
 import AdminCredits from "@/pages/admin/AdminCredits";
 import AdminRoles from "@/pages/admin/AdminRoles";
 import AdminBootstrap from "@/pages/admin/AdminBootstrap";
+import AdminDeletedGames from "@/pages/admin/AdminDeletedGames";
 
 const queryClient = new QueryClient();
 
