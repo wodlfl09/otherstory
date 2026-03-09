@@ -292,7 +292,7 @@ export default function Library() {
                         <Button variant="ghost" size="sm" onClick={(e) => openPublishModal(e, item)} className="gap-1 text-xs h-7 px-2">
                           <Share2 className="h-3 w-3" /><span className="hidden sm:inline">공개</span>
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={(e) => removeItem(e, item.id)} className="ml-auto text-muted-foreground hover:text-destructive h-7 px-2">
+                        <Button variant="ghost" size="sm" onClick={(e) => removeItem(e, item.id, item.story?.id)} className="ml-auto text-muted-foreground hover:text-destructive h-7 px-2">
                           <Trash2 className="h-3 w-3" />
                         </Button>
                       </div>
