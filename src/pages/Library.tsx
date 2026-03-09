@@ -189,15 +189,37 @@ export default function Library() {
     }
   };
 
-  const openPublishModal = (e: React.MouseEvent, item: LibraryEntry) => {
+  const togglePublish = async (e: React.MouseEvent, item: LibraryEntry) => {
     e.stopPropagation();
-    setPublishTarget({
-      storyId: item.story?.id,
-      title: item.story?.title || "",
-      synopsis: item.story?.synopsis || "",
-      coverUrl: item.story?.cover_url || item.fallbackCover || "",
-      protagonistName: item.story?.protagonist_name || "",
-    });
+    const storyId = item.story?.id;
+    if (!storyId) return;
+    setTogglingPublishId(storyId);
+    try {
+      if (item.story?.is_public) {
+        await supabase.from("stories").update({ is_public: false }).eq("id", storyId);
+        await supabase.from("public_games").delete().eq("story_id", storyId);
+        setItems((prev) => prev.map((i) => i.story?.id === storyId ? { ...i, story: { ...i.story, is_public: false } } : i));
+        toast.success("비공개로 전환되었습니다.");
+      } else {
+        const { error } = await supabase.functions.invoke("publish-content", {
+          body: {
+            type: "game",
+            story_id: storyId,
+            title: item.story?.title,
+            synopsis: item.story?.synopsis,
+            cover_url: item.story?.cover_url || item.fallbackCover,
+            protagonist_name: item.story?.protagonist_name,
+          },
+        });
+        if (error) throw error;
+        setItems((prev) => prev.map((i) => i.story?.id === storyId ? { ...i, story: { ...i.story, is_public: true } } : i));
+        toast.success("공개되었습니다!");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "변경 실패");
+    } finally {
+      setTogglingPublishId(null);
+    }
   };
 
   return (
