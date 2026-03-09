@@ -41,29 +41,23 @@ serve(async (req) => {
 
     const plan = profile.plan || "free";
 
-    if (plan === "free") {
-      return new Response(JSON.stringify({ ad_required: true }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    // For paid plans, deduct credits. No ad gate for replay anymore.
+    if (plan !== "free") {
+      if (profile.credits >= 10) {
+        await supabase.from("profiles").update({ credits: profile.credits - 10 }).eq("user_id", user.id);
+        await supabase.from("credit_tx").insert({ idempotency_key, user_id: user.id, kind: "replay_story", delta: -10, ref: { story_id } });
+        await supabase.from("credits_ledger").insert({ user_id: user.id, delta: -10, reason: "replay_story", meta: { story_id } });
+      }
+      // If not enough credits, allow free replay for paid users
     }
-
-    if (profile.credits < 10) {
-      return new Response(JSON.stringify({ ad_required: true }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Deduct credits
-    await supabase.from("profiles").update({ credits: profile.credits - 10 }).eq("user_id", user.id);
-    await supabase.from("credit_tx").insert({ idempotency_key, user_id: user.id, kind: "replay_story", delta: -10, ref: { story_id } });
-    await supabase.from("credits_ledger").insert({ user_id: user.id, delta: -10, reason: "replay_story", meta: { story_id } });
+    // Free plan: no credits needed, no ad for replay
 
     // Get story config
     const { data: story } = await supabase.from("stories").select("*").eq("id", story_id).single();
     if (!story) throw new Error("Story not found");
     const config = (story.config as any) || {};
 
-    // Create new session pointing to existing nodes (no node generation!)
+    // Create new session pointing to existing nodes
     const { data: session, error: sessErr } = await supabase.from("story_sessions").insert({
       story_id: story.id,
       user_id: user.id,
@@ -74,6 +68,7 @@ serve(async (req) => {
       current_node_id: "n0",
       state: { genre: story.genre, visited_nodes: [], chosen_choices: [] },
       ad_required: false,
+      ad_shown: false,
     }).select().single();
     if (sessErr) throw sessErr;
 

@@ -177,10 +177,6 @@ export default function Library() {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      if (data?.ad_required) {
-        navigate(`/ad?type=replay&story_id=${storyId}&key=${idempotencyKey}`);
-        return;
-      }
       if (data?.session_id) navigate(`/game/${data.session_id}`);
     } catch (err: any) {
       toast.error(err.message || "재진행 실패");
