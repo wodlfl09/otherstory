@@ -203,14 +203,11 @@ ${nodeDescs}
 1. 선택지 없음
 2. 짧고 여운 있는 결말 (200~300자)`;
 
-        const aiResponse = await fetchWithTimeout("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            model: "google/gemini-2.5-flash-lite",
+        const aiRequestBody = JSON.stringify({
+            model: "google/gemini-2.5-flash",
             messages: [
               { role: "system", content: systemPrompt },
-              { role: "user", content: `위 구조에 맞는 전체 ${graph.length}개 노드를 생성하세요.` },
+              { role: "user", content: `위 구조에 맞는 전체 ${graph.length}개 노드를 생성하세요. 각 노드의 node_id, scene_text, image_brief, choices를 빠짐없이 포함하세요.` },
             ],
             tools: [{
               type: "function",
@@ -263,20 +260,42 @@ ${nodeDescs}
               },
             }],
             tool_choice: { type: "function", function: { name: "generate_story_graph" } },
-          }),
-        }, 50000);
+          });
 
-        if (aiResponse.ok) {
-          const aiData = await aiResponse.json();
-          const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-          if (toolCall) {
-            const args = JSON.parse(toolCall.function.arguments);
-            if (args.nodes && Array.isArray(args.nodes)) generatedNodes = args.nodes;
+        // Try up to 2 times with different models
+        const models = ["google/gemini-2.5-flash", "google/gemini-3-flash-preview"];
+        for (let attempt = 0; attempt < models.length; attempt++) {
+          try {
+            const bodyWithModel = JSON.parse(aiRequestBody);
+            bodyWithModel.model = models[attempt];
+            console.log(`AI attempt ${attempt + 1} with model ${models[attempt]}`);
+
+            const aiResponse = await fetchWithTimeout("https://ai.gateway.lovable.dev/v1/chat/completions", {
+              method: "POST",
+              headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+              body: JSON.stringify(bodyWithModel),
+            }, 60000);
+
+            if (aiResponse.ok) {
+              const aiData = await aiResponse.json();
+              const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
+              if (toolCall) {
+                const args = JSON.parse(toolCall.function.arguments);
+                if (args.nodes && Array.isArray(args.nodes) && args.nodes.length > 0) {
+                  generatedNodes = args.nodes;
+                  console.log(`AI generated ${generatedNodes.length} nodes on attempt ${attempt + 1}`);
+                  break;
+                }
+              }
+              console.error(`AI attempt ${attempt + 1}: no valid nodes in response`);
+            } else {
+              const errText = await aiResponse.text();
+              console.error(`AI attempt ${attempt + 1} failed: ${aiResponse.status} - ${errText}`);
+            }
+          } catch (retryErr) {
+            console.error(`AI attempt ${attempt + 1} error:`, retryErr);
           }
-        } else {
-          console.error("AI graph generation failed:", aiResponse.status);
         }
-      } catch (aiErr) { console.error("AI graph error:", aiErr); }
     }
 
     // Map generated content to graph nodes
