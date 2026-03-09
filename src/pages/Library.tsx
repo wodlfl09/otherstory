@@ -9,7 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { BookOpen, Trash2, RotateCcw, Loader2, Sparkles, Globe, GlobeLock } from "lucide-react";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { toast } from "sonner";
-import PublishModal from "@/components/PublishModal";
+
 import DeleteGameDialog from "@/components/DeleteGameDialog";
 
 interface LibraryEntry {
