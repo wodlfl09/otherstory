@@ -1,7 +1,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import Navbar from "@/components/Navbar";
 import { NavLink, Outlet, Navigate } from "react-router-dom";
-import { Shield, Users, Coins, UserCog, KeyRound } from "lucide-react";
+import { Shield, Users, Coins, UserCog, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function AdminLayout() {
