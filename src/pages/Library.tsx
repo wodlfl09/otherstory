@@ -143,11 +143,27 @@ export default function Library() {
     setLoading(false);
   };
 
-  const removeItem = async (e: React.MouseEvent, id: string) => {
+  const removeItem = async (e: React.MouseEvent, id: string, storyId: string) => {
     e.stopPropagation();
-    await supabase.from("library_items").delete().eq("id", id);
-    setItems((prev) => prev.filter((i) => i.id !== id));
-    toast.success("삭제되었습니다.");
+    setDeleteTarget({ itemId: id, storyId });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeletingItem(true);
+    try {
+      // Soft-delete the story
+      await supabase.from("stories").update({ deleted_at: new Date().toISOString() } as any).eq("id", deleteTarget.storyId);
+      // Remove from library
+      await supabase.from("library_items").delete().eq("id", deleteTarget.itemId);
+      setItems((prev) => prev.filter((i) => i.id !== deleteTarget.itemId));
+      toast.success("삭제되었습니다.");
+    } catch (err: any) {
+      toast.error(err.message || "삭제 실패");
+    } finally {
+      setDeletingItem(false);
+      setDeleteTarget(null);
+    }
   };
 
   const handleReplay = async (e: React.MouseEvent, storyId: string) => {
