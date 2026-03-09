@@ -126,8 +126,9 @@ serve(async (req) => {
     // Build graph structure
     const graph = buildGraph(totalSteps, choices_count, endings_count);
 
-    // Estimate ETA: ~25s text + ~12s per node for images
-    const etaSeconds = 25 + graph.length * 12;
+    // Estimate ETA: ~25s text + ~12s per batch of 3 images
+    const imageBatches = Math.ceil(graph.length / 3);
+    const etaSeconds = 25 + imageBatches * 12;
 
     // Create generation job
     const { data: job, error: jobErr } = await supabase.from("generation_jobs").insert({
