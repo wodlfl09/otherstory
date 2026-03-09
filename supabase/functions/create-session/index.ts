@@ -75,8 +75,7 @@ serve(async (req) => {
     const body = await req.json();
     const { genre, name, gender, protagonist, keywords, customStory, duration_min, choices_count, endings_count, idempotency_key } = body;
 
-    const allowedGenres = ["horror", "mystery", "action"];
-    if (!allowedGenres.includes(genre)) throw new Error("현재 공포, 미스터리, 스릴러 장르만 지원합니다.");
+    if (!genre) throw new Error("장르를 선택해주세요.");
 
     if (idempotency_key) {
       const { data: existingTx } = await supabase.from("credit_tx").select("idempotency_key, ref").eq("idempotency_key", idempotency_key).maybeSingle();
