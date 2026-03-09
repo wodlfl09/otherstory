@@ -208,13 +208,23 @@ export default function GenerationWait() {
 
         {/* Actions when not complete */}
         {job.status !== "completed" && (
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={() => navigate("/home")}
-          >
-            나중에 보기
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => navigate("/home")}
+            >
+              나중에 보기
+            </Button>
+            <Button
+              variant="destructive"
+              className="flex-1"
+              onClick={() => setDeleteOpen(true)}
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              생성 중지
+            </Button>
+          </div>
         )}
       </div>
 
