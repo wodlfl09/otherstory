@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Loader2, Sparkles, BookOpen, Clock, CheckCircle2 } from "lucide-react";
+import { Loader2, Sparkles, BookOpen, Clock, CheckCircle2, Trash2 } from "lucide-react";
+import DeleteGameDialog from "@/components/DeleteGameDialog";
 import { cn } from "@/lib/utils";
 
 const STAGE_ICONS: Record<string, typeof Loader2> = {
@@ -20,6 +21,8 @@ export default function GenerationWait() {
   const [job, setJob] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [completeModal, setCompleteModal] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const processingRef = useRef(false);
   const mountedRef = useRef(true);
 
@@ -89,6 +92,23 @@ export default function GenerationWait() {
       processNextImage();
     }
   }, [job?.status, processNextImage]);
+
+  const handleDeleteGame = async () => {
+    if (!job) return;
+    setDeleting(true);
+    try {
+      // Soft-delete: set deleted_at on the story
+      await supabase.from("stories").update({ deleted_at: new Date().toISOString() } as any).eq("id", job.story_id);
+      // Mark job as failed/cancelled
+      await supabase.from("generation_jobs").update({ status: "failed", current_stage: "사용자에 의해 취소됨" } as any).eq("id", jobId);
+      toast.success("게임이 삭제되었습니다.");
+      navigate("/home");
+    } catch (err: any) {
+      toast.error(err.message || "삭제 실패");
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const requestBrowserNotification = () => {
     if ("Notification" in window && Notification.permission === "granted") {
@@ -205,13 +225,23 @@ export default function GenerationWait() {
 
         {/* Actions when not complete */}
         {job.status !== "completed" && (
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={() => navigate("/home")}
-          >
-            나중에 보기
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => navigate("/home")}
+            >
+              나중에 보기
+            </Button>
+            <Button
+              variant="destructive"
+              className="flex-1"
+              onClick={() => setDeleteOpen(true)}
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              생성 중지
+            </Button>
+          </div>
         )}
       </div>
 
@@ -244,6 +274,14 @@ export default function GenerationWait() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete confirmation dialog */}
+      <DeleteGameDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        onConfirm={handleDeleteGame}
+        loading={deleting}
+      />
     </div>
   );
 }

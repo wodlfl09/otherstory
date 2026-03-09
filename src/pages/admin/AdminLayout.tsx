@@ -1,7 +1,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import Navbar from "@/components/Navbar";
 import { NavLink, Outlet, Navigate } from "react-router-dom";
-import { Shield, Users, Coins, UserCog, KeyRound } from "lucide-react";
+import { Shield, Users, Coins, UserCog, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function AdminLayout() {
@@ -16,6 +16,7 @@ export default function AdminLayout() {
     { to: "/admin/users", icon: Users, label: "유저 관리", roles: ["admin", "subadmin"] },
     { to: "/admin/credits", icon: Coins, label: "크레딧", roles: ["admin", "subadmin"] },
     { to: "/admin/roles", icon: UserCog, label: "역할 관리", roles: ["admin"] },
+    { to: "/admin/deleted", icon: Trash2, label: "삭제된 게임", roles: ["admin", "subadmin"] },
   ].filter((l) => l.roles.includes(role));
 
   return (

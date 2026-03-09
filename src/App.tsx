@@ -23,6 +23,7 @@ import AdminUsers from "@/pages/admin/AdminUsers";
 import AdminCredits from "@/pages/admin/AdminCredits";
 import AdminRoles from "@/pages/admin/AdminRoles";
 import AdminBootstrap from "@/pages/admin/AdminBootstrap";
+import AdminDeletedGames from "@/pages/admin/AdminDeletedGames";
 
 const queryClient = new QueryClient();
 
@@ -53,6 +54,7 @@ const App = () => (
               <Route path="users" element={<AdminUsers />} />
               <Route path="credits" element={<AdminCredits />} />
               <Route path="roles" element={<AdminRoles />} />
+              <Route path="deleted" element={<AdminDeletedGames />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -10,6 +10,7 @@ import { BookOpen, Trash2, RotateCcw, Share2, Loader2, Sparkles } from "lucide-r
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { toast } from "sonner";
 import PublishModal from "@/components/PublishModal";
+import DeleteGameDialog from "@/components/DeleteGameDialog";
 
 interface LibraryEntry {
   id: string;
@@ -42,6 +43,8 @@ export default function Library() {
   const [replayingId, setReplayingId] = useState<string | null>(null);
   const [publishTarget, setPublishTarget] = useState<{ storyId: string; title: string; synopsis: string; coverUrl: string; protagonistName: string } | null>(null);
   const [activeJob, setActiveJob] = useState<any>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ itemId: string; storyId: string } | null>(null);
+  const [deletingItem, setDeletingItem] = useState(false);
 
   const maxItems = profile?.plan === "pro" ? Infinity : profile?.plan === "basic" ? 9 : 3;
 
@@ -140,11 +143,27 @@ export default function Library() {
     setLoading(false);
   };
 
-  const removeItem = async (e: React.MouseEvent, id: string) => {
+  const removeItem = async (e: React.MouseEvent, id: string, storyId: string) => {
     e.stopPropagation();
-    await supabase.from("library_items").delete().eq("id", id);
-    setItems((prev) => prev.filter((i) => i.id !== id));
-    toast.success("삭제되었습니다.");
+    setDeleteTarget({ itemId: id, storyId });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeletingItem(true);
+    try {
+      // Soft-delete the story
+      await supabase.from("stories").update({ deleted_at: new Date().toISOString() } as any).eq("id", deleteTarget.storyId);
+      // Remove from library
+      await supabase.from("library_items").delete().eq("id", deleteTarget.itemId);
+      setItems((prev) => prev.filter((i) => i.id !== deleteTarget.itemId));
+      toast.success("삭제되었습니다.");
+    } catch (err: any) {
+      toast.error(err.message || "삭제 실패");
+    } finally {
+      setDeletingItem(false);
+      setDeleteTarget(null);
+    }
   };
 
   const handleReplay = async (e: React.MouseEvent, storyId: string) => {
@@ -273,7 +292,7 @@ export default function Library() {
                         <Button variant="ghost" size="sm" onClick={(e) => openPublishModal(e, item)} className="gap-1 text-xs h-7 px-2">
                           <Share2 className="h-3 w-3" /><span className="hidden sm:inline">공개</span>
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={(e) => removeItem(e, item.id)} className="ml-auto text-muted-foreground hover:text-destructive h-7 px-2">
+                        <Button variant="ghost" size="sm" onClick={(e) => removeItem(e, item.id, item.story?.id)} className="ml-auto text-muted-foreground hover:text-destructive h-7 px-2">
                           <Trash2 className="h-3 w-3" />
                         </Button>
                       </div>
@@ -300,6 +319,13 @@ export default function Library() {
           }}
         />
       )}
+
+      <DeleteGameDialog
+        open={!!deleteTarget}
+        onOpenChange={(v) => { if (!v) setDeleteTarget(null); }}
+        onConfirm={confirmDelete}
+        loading={deletingItem}
+      />
     </div>
   );
 }
