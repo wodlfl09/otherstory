@@ -55,7 +55,7 @@ export default function Home() {
       )}
 
       {/* Compact hero */}
-      <section className="relative pt-16">
+      <section className="relative pt-14 sm:pt-16">
         <div className="absolute inset-0 gradient-glow opacity-60" />
         <div className="relative container mx-auto px-4 py-8 md:py-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
