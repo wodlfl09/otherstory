@@ -353,7 +353,6 @@ export default function GamePlay() {
               supabase.functions.invoke("replay-story", { body: { story_id: session.story_id, idempotency_key } })
                 .then(({ data, error }) => {
                   if (error) { toast.error("다시 플레이에 실패했습니다."); return; }
-                  if (data?.ad_required) { navigate(`/ad?type=replay&story_id=${session.story_id}&key=${idempotency_key}`); return; }
                   if (data?.error) { toast.error(data.error); return; }
                   if (data?.session_id) navigate(`/game/${data.session_id}`);
                 })
