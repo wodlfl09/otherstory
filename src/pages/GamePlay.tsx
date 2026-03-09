@@ -9,6 +9,11 @@ import {
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { toast } from "sonner";
 import { Film, ImageIcon, AlertTriangle, Shield, Clock, Brain, Search, ArrowLeft, Home } from "lucide-react";
+
+const GENRE_LABELS: Record<string, string> = {
+  sf: "SF", fantasy: "판타지", mystery: "추리", action: "액션",
+  horror: "공포", romance: "로맨스", comic: "코믹", martial: "무협",
+};
 import MotionComic from "@/components/MotionComic";
 import ShareCard from "@/components/game/ShareCard";
 import { cn } from "@/lib/utils";
@@ -329,31 +334,46 @@ export default function GamePlay() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Top bar */}
+      {/* Top bar - 2-row mobile layout */}
       <div className="sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b border-border/50">
-        <div className="max-w-4xl mx-auto px-4 py-2 flex items-center gap-2">
-          <button onClick={() => session?.finished ? navigate(-1) : setExitTarget("back")}
-            className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" aria-label="뒤로가기">
-            <ArrowLeft className="h-4 w-4" />
-          </button>
-          <button onClick={() => session?.finished ? navigate("/home") : setExitTarget("home")}
-            className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" aria-label="홈으로">
-            <Home className="h-4 w-4" />
-          </button>
-          <span className="font-display text-[10px] sm:text-xs text-muted-foreground tracking-wider">CH.{(session?.step || 0) + 1}</span>
-          <div className="flex-1 h-1 rounded-full bg-secondary overflow-hidden">
-            <div className="h-full rounded-full bg-primary transition-all duration-700 ease-out" style={{ width: `${progressPct}%` }} />
+        <div className="max-w-4xl mx-auto px-3 sm:px-4">
+          {/* Row 1: Back / Title / Menu */}
+          <div className="flex items-center gap-2 py-2">
+            <button onClick={() => session?.finished ? navigate(-1) : setExitTarget("back")}
+              className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" aria-label="뒤로가기">
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+            <h2 className="flex-1 min-w-0 font-display text-sm sm:text-base font-semibold text-foreground truncate" style={{ wordBreak: "keep-all" }}>
+              {storyTitle || `CH.${(session?.step || 0) + 1}`}
+            </h2>
+            <button onClick={() => session?.finished ? navigate("/home") : setExitTarget("home")}
+              className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" aria-label="홈으로">
+              <Home className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => { const next = !motionComic; setMotionComic(next); localStorage.setItem("motion-comic", String(next)); }}
+              className={cn(
+                "shrink-0 rounded-md p-1.5 transition-colors",
+                motionComic ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Film className="h-3.5 w-3.5" />
+            </button>
           </div>
-          <span className="text-[10px] sm:text-xs text-muted-foreground">{Math.round(progressPct)}%</span>
-          <button
-            onClick={() => { const next = !motionComic; setMotionComic(next); localStorage.setItem("motion-comic", String(next)); }}
-            className={cn(
-              "flex items-center gap-1 rounded-md px-2 py-1 text-[10px] transition-colors",
-              motionComic ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
+          {/* Row 2: Genre badge / Progress / Chapter chip */}
+          <div className="flex items-center gap-2 pb-2">
+            {(session?.state as any)?.genre && (
+              <span className="shrink-0 rounded-full bg-primary/10 text-primary text-[10px] font-medium px-2 py-0.5">
+                {GENRE_LABELS[(session?.state as any)?.genre] || (session?.state as any)?.genre}
+              </span>
             )}
-          >
-            <Film className="h-3 w-3" />
-          </button>
+            <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
+              <div className="h-full rounded-full bg-primary transition-all duration-700 ease-out" style={{ width: `${progressPct}%` }} />
+            </div>
+            <span className="shrink-0 rounded-full bg-secondary text-muted-foreground text-[10px] font-medium px-2 py-0.5">
+              CH.{(session?.step || 0) + 1} · {Math.round(progressPct)}%
+            </span>
+          </div>
         </div>
       </div>
 
@@ -396,6 +416,7 @@ export default function GamePlay() {
       <div className="flex-1 max-w-4xl mx-auto w-full">
         {node && (
           <div className="opacity-0 animate-fade-in">
+            {/* Image - full width, prioritized */}
             <div className="w-full">
               {node.image_url ? (
                 motionComic ? (
@@ -414,14 +435,16 @@ export default function GamePlay() {
               )}
             </div>
 
-            <div className="px-4 py-5 sm:px-6">
-              <p className="whitespace-pre-wrap leading-relaxed text-foreground text-sm sm:text-base">
+            {/* Scene text */}
+            <div className="px-4 py-4 sm:px-6 sm:py-5">
+              <p className="whitespace-pre-wrap leading-[1.8] text-foreground text-[15px] sm:text-base">
                 {node.scene_text}
               </p>
             </div>
 
+            {/* Choices - big touch targets for mobile */}
             {node.choices && node.choices.length > 0 && !choosing && (
-              <div className="px-4 pb-8 sm:px-6 space-y-2.5">
+              <div className="px-4 pb-8 sm:px-6 space-y-3">
                 {node.choices.map((choice, i) => {
                   const style = attitudeStyles[choice.attitude] || attitudeStyles.neutral;
                   return (
@@ -430,14 +453,15 @@ export default function GamePlay() {
                       disabled={choosing}
                       onClick={() => handleChoice(choice.id)}
                       className={cn(
-                        "w-full flex items-center gap-3 rounded-xl border-2 bg-card/50 backdrop-blur-sm p-4 text-left transition-all duration-200",
+                        "w-full flex items-center gap-3 rounded-xl border-2 bg-card/50 backdrop-blur-sm text-left transition-all duration-200",
+                        "min-h-[56px] px-4 py-3.5 sm:p-4",
                         "disabled:opacity-50 opacity-0 animate-fade-in active:scale-[0.98]",
                         style.border, style.glow
                       )}
                       style={{ animationDelay: `${200 + i * 100}ms` }}
                     >
-                      <span className="text-lg shrink-0">{style.icon}</span>
-                      <span className="flex-1 text-sm font-medium text-foreground leading-snug">{choice.label}</span>
+                      <span className="text-xl sm:text-lg shrink-0">{style.icon}</span>
+                      <span className="flex-1 text-sm sm:text-sm font-medium text-foreground leading-snug">{choice.label}</span>
                     </button>
                   );
                 })}

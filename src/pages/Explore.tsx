@@ -238,7 +238,7 @@ export default function Explore() {
             ) : filteredGames.length === 0 ? (
               <div className="py-20 text-center text-muted-foreground">공개된 게임이 없습니다.</div>
             ) : (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-2 lg:grid-cols-3">
                 {filteredGames.map((game) => (
                   <ExploreContentCard
                     key={game.story_id}
@@ -266,7 +266,7 @@ export default function Explore() {
             ) : filteredNovels.length === 0 ? (
               <div className="py-20 text-center text-muted-foreground">공개된 소설이 없습니다.</div>
             ) : (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-2 lg:grid-cols-3">
                 {filteredNovels.map((novel) => (
                   <ExploreContentCard
                     key={novel.id}
