@@ -10,6 +10,7 @@ import { BookOpen, Trash2, RotateCcw, Share2, Loader2, Sparkles } from "lucide-r
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { toast } from "sonner";
 import PublishModal from "@/components/PublishModal";
+import DeleteGameDialog from "@/components/DeleteGameDialog";
 
 interface LibraryEntry {
   id: string;
