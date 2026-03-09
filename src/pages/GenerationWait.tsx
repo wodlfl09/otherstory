@@ -21,6 +21,8 @@ export default function GenerationWait() {
   const [job, setJob] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [completeModal, setCompleteModal] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const processingRef = useRef(false);
   const mountedRef = useRef(true);
 
