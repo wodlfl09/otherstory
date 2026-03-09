@@ -146,6 +146,31 @@ serve(async (req) => {
       });
     }
 
+    if (action === "list_deleted_games") {
+      const { data: stories } = await supabase
+        .from("stories")
+        .select("id, title, genre, protagonist_name, deleted_at, user_id, created_at")
+        .not("deleted_at", "is", null)
+        .order("deleted_at", { ascending: false })
+        .limit(100);
+
+      return new Response(JSON.stringify({ stories: stories || [] }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "restore_game") {
+      if (callerRole !== "admin") throw new Error("관리자만 복구할 수 있습니다.");
+      const { story_id } = body;
+      if (!story_id) throw new Error("Missing story_id");
+
+      await supabase.from("stories").update({ deleted_at: null }).eq("id", story_id);
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     throw new Error("Unknown action");
   } catch (e) {
     console.error("admin error:", e);
