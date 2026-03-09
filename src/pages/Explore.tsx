@@ -180,7 +180,7 @@ export default function Explore() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <div className="container mx-auto max-w-6xl px-4 pt-24 pb-16">
+      <div className="container mx-auto max-w-6xl px-4 pt-16 sm:pt-24 pb-20 sm:pb-16">
         <h1 className="font-display text-3xl font-bold mb-2 text-foreground">탐색</h1>
         <p className="text-muted-foreground mb-8">공개된 게임과 소설을 즐겨보세요</p>
 

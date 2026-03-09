@@ -183,7 +183,7 @@ export default function Library() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <div className="container mx-auto max-w-5xl px-4 pt-24 pb-16">
+      <div className="container mx-auto max-w-5xl px-4 pt-16 sm:pt-24 pb-20 sm:pb-16">
         {/* Active generation banner */}
         {activeJob && (
           <div
