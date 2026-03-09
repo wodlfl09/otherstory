@@ -219,7 +219,7 @@ export default function Library() {
             <Button onClick={() => navigate("/home")}>새 스토리 시작하기</Button>
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {items.map((item) => {
               const cover = item.story?.cover_url || item.fallbackCover;
               return (
@@ -228,57 +228,55 @@ export default function Library() {
                   onClick={() => navigate(`/story/${item.story?.id}`)}
                   className="group cursor-pointer rounded-xl border border-border bg-card overflow-hidden transition-all hover:border-primary/40 hover:shadow-[var(--shadow-glow)]"
                 >
-                  <AspectRatio ratio={16 / 9}>
-                    {cover ? (
-                      <img src={cover} alt={item.story?.title} className="h-full w-full object-cover transition-transform group-hover:scale-105" />
-                    ) : (
-                      <div className="h-full w-full bg-secondary flex items-center justify-center">
-                        <BookOpen className="h-8 w-8 text-muted-foreground" />
-                      </div>
-                    )}
-                  </AspectRatio>
-                  <div className="p-4">
-                    <h3 className="font-medium text-foreground line-clamp-1">{item.story?.title || "제목 없음"}</h3>
-                    <div className="mt-1 flex items-center gap-2 flex-wrap">
-                      {item.story?.is_public && (
-                        <Badge className="bg-primary/20 text-primary border-primary/30 text-[10px]">공개됨</Badge>
-                      )}
-                      <Badge variant="outline" className="text-[10px]">
-                        {GENRE_LABELS[item.story?.genre] || item.story?.genre}
-                      </Badge>
-                      {item.story?.protagonist_name && (
-                        <span className="text-xs text-muted-foreground">{item.story.protagonist_name}</span>
-                      )}
-                    </div>
-                    {item.lastPlayedAt && (
-                      <p className="mt-1 text-[11px] text-muted-foreground">
-                        마지막 플레이: {new Date(item.lastPlayedAt).toLocaleDateString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-                      </p>
-                    )}
-                    {item.story?.synopsis && (
-                      <p className="mt-2 text-xs text-muted-foreground line-clamp-2">{item.story.synopsis}</p>
-                    )}
-                    <div className="mt-3 flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => handleReplay(e, item.story?.id)}
-                        disabled={replayingId === item.story?.id}
-                        className="gap-1 text-xs"
-                      >
-                        {replayingId === item.story?.id ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  {/* Mobile: horizontal card / Desktop: vertical card */}
+                  <div className="flex sm:flex-col">
+                    <div className="w-28 sm:w-full shrink-0">
+                      <AspectRatio ratio={16 / 9}>
+                        {cover ? (
+                          <img src={cover} alt={item.story?.title} className="h-full w-full object-cover transition-transform group-hover:scale-105" />
                         ) : (
-                          <RotateCcw className="h-3.5 w-3.5" />
+                          <div className="h-full w-full bg-secondary flex items-center justify-center">
+                            <BookOpen className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground" />
+                          </div>
                         )}
-                        재진행
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={(e) => openPublishModal(e, item)} className="gap-1 text-xs">
-                        <Share2 className="h-3.5 w-3.5" />공개
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={(e) => removeItem(e, item.id)} className="ml-auto text-muted-foreground hover:text-destructive">
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                      </AspectRatio>
+                    </div>
+                    <div className="flex-1 min-w-0 p-3 sm:p-4">
+                      <h3 className="font-medium text-foreground line-clamp-1 text-sm sm:text-base" style={{ wordBreak: "keep-all" }}>{item.story?.title || "제목 없음"}</h3>
+                      <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                        {item.story?.is_public && (
+                          <Badge className="bg-primary/20 text-primary border-primary/30 text-[10px]">공개됨</Badge>
+                        )}
+                        <Badge variant="outline" className="text-[10px]">
+                          {GENRE_LABELS[item.story?.genre] || item.story?.genre}
+                        </Badge>
+                        {item.story?.protagonist_name && (
+                          <span className="text-[11px] text-muted-foreground truncate max-w-[80px]">{item.story.protagonist_name}</span>
+                        )}
+                      </div>
+                      <p className="mt-1 text-[11px] text-muted-foreground line-clamp-1 sm:line-clamp-2 hidden sm:block">{item.story?.synopsis}</p>
+                      <div className="mt-2 sm:mt-3 flex items-center gap-0.5">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => handleReplay(e, item.story?.id)}
+                          disabled={replayingId === item.story?.id}
+                          className="gap-1 text-xs h-7 px-2"
+                        >
+                          {replayingId === item.story?.id ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <RotateCcw className="h-3 w-3" />
+                          )}
+                          <span className="hidden sm:inline">재진행</span>
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={(e) => openPublishModal(e, item)} className="gap-1 text-xs h-7 px-2">
+                          <Share2 className="h-3 w-3" /><span className="hidden sm:inline">공개</span>
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={(e) => removeItem(e, item.id)} className="ml-auto text-muted-foreground hover:text-destructive h-7 px-2">
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>

@@ -155,51 +155,50 @@ export default function StoryReader() {
     <div className="min-h-screen bg-background">
       <Navbar />
       <div className="container mx-auto max-w-3xl px-4 pt-24 pb-16">
-        {/* Header */}
-        <div className="mb-6 flex items-start justify-between gap-4">
-          <div className="space-y-1">
-            <h1 className="font-display text-2xl font-bold text-foreground">{story?.title}</h1>
-            <div className="flex items-center gap-2 flex-wrap">
-              <Badge variant="outline">{GENRE_LABELS[story?.genre] || story?.genre}</Badge>
-              {story?.protagonist_name && (
-                <span className="text-sm text-muted-foreground">{story.protagonist_name}</span>
-              )}
-              {sessionFinished && (
-                <Badge className="bg-primary/20 text-primary border-primary/30">완주</Badge>
-              )}
-              {isGamePublished && (
-                <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-[10px]">게임 공개됨</Badge>
-              )}
-              {isNovelPublished && (
-                <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-[10px]">소설 공개됨</Badge>
-              )}
+        {/* Header - mobile optimized */}
+        <div className="mb-6 space-y-3">
+          <div className="flex items-start gap-3">
+            <div className="flex-1 min-w-0 space-y-1.5">
+              <h1 className="font-display text-xl sm:text-2xl font-bold text-foreground line-clamp-2" style={{ wordBreak: "keep-all" }}>{story?.title}</h1>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <Badge variant="outline" className="text-[10px]">{GENRE_LABELS[story?.genre] || story?.genre}</Badge>
+                {story?.protagonist_name && (
+                  <span className="text-xs text-muted-foreground">{story.protagonist_name}</span>
+                )}
+                {sessionFinished && (
+                  <Badge className="bg-primary/20 text-primary border-primary/30 text-[10px]">완주</Badge>
+                )}
+                {isGamePublished && (
+                  <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-[10px]">공개됨</Badge>
+                )}
+              </div>
             </div>
-            {story?.synopsis && (
-              <p className="text-sm text-muted-foreground mt-2">{story.synopsis}</p>
-            )}
           </div>
-          <div className="flex gap-2 shrink-0 flex-wrap">
+          {story?.synopsis && (
+            <p className="text-sm text-muted-foreground line-clamp-3">{story.synopsis}</p>
+          )}
+          <div className="flex gap-2 flex-wrap">
             {!isGamePublished ? (
-              <Button variant="outline" size="sm" onClick={() => setPublishGameOpen(true)} className="gap-2">
-                <Globe className="h-4 w-4" />게임 공개
+              <Button variant="outline" size="sm" onClick={() => setPublishGameOpen(true)} className="gap-1.5 text-xs h-8">
+                <Globe className="h-3.5 w-3.5" />게임 공개
               </Button>
             ) : (
-              <Button variant="ghost" size="sm" disabled className="gap-2 opacity-60">
-                <Globe className="h-4 w-4" />공개됨
+              <Button variant="ghost" size="sm" disabled className="gap-1.5 text-xs h-8 opacity-60">
+                <Globe className="h-3.5 w-3.5" />공개됨
               </Button>
             )}
             {sessionFinished && sessionId && !isNovelPublished && (
-              <Button variant="outline" size="sm" onClick={() => setPublishNovelOpen(true)} className="gap-2">
-                <BookOpen className="h-4 w-4" />소설 공개
+              <Button variant="outline" size="sm" onClick={() => setPublishNovelOpen(true)} className="gap-1.5 text-xs h-8">
+                <BookOpen className="h-3.5 w-3.5" />소설 공개
               </Button>
             )}
             {sessionFinished && sessionId && isNovelPublished && (
-              <Button variant="ghost" size="sm" disabled className="gap-2 opacity-60">
-                <BookOpen className="h-4 w-4" />소설 공개됨
+              <Button variant="ghost" size="sm" disabled className="gap-1.5 text-xs h-8 opacity-60">
+                <BookOpen className="h-3.5 w-3.5" />소설 공개됨
               </Button>
             )}
-            <Button variant="outline" size="sm" onClick={handleReplay} disabled={replayLoading} className="gap-2">
-              {replayLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+            <Button variant="outline" size="sm" onClick={handleReplay} disabled={replayLoading} className="gap-1.5 text-xs h-8">
+              {replayLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
               재진행
             </Button>
           </div>

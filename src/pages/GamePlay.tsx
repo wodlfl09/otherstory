@@ -9,6 +9,11 @@ import {
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { toast } from "sonner";
 import { Film, ImageIcon, AlertTriangle, Shield, Clock, Brain, Search, ArrowLeft, Home } from "lucide-react";
+
+const GENRE_LABELS: Record<string, string> = {
+  sf: "SF", fantasy: "판타지", mystery: "추리", action: "액션",
+  horror: "공포", romance: "로맨스", comic: "코믹", martial: "무협",
+};
 import MotionComic from "@/components/MotionComic";
 import ShareCard from "@/components/game/ShareCard";
 import { cn } from "@/lib/utils";

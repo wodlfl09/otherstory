@@ -38,21 +38,21 @@ export default function ExploreContentCard({
           </div>
         )}
       </AspectRatio>
-      <div className="p-4 space-y-2">
-        <div className="flex items-center gap-2">
-          <h3 className="font-medium text-foreground line-clamp-1 flex-1">{title}</h3>
+      <div className="p-3 sm:p-4 space-y-1.5">
+        <div className="flex items-center gap-1.5">
+          <h3 className="font-medium text-foreground line-clamp-1 flex-1 text-sm sm:text-base" style={{ wordBreak: "keep-all" }}>{title}</h3>
           {genre && <Badge variant="outline" className="text-[10px] shrink-0">{GENRE_LABELS[genre] || genre}</Badge>}
         </div>
         {protagonistName && (
-          <p className="text-xs text-muted-foreground">주인공: {protagonistName}</p>
+          <p className="text-[11px] text-muted-foreground truncate">주인공: {protagonistName}</p>
         )}
         {synopsis && (
-          <p className="text-xs text-muted-foreground line-clamp-2">{synopsis}</p>
+          <p className="text-xs text-muted-foreground line-clamp-2 hidden sm:block">{synopsis}</p>
         )}
-        <div className="flex items-center gap-3 text-xs text-muted-foreground pt-1">
-          <span className="flex items-center gap-1"><Heart className="h-3.5 w-3.5" />{likeCount}</span>
+        <div className="flex items-center gap-3 text-xs text-muted-foreground pt-0.5">
+          <span className="flex items-center gap-1"><Heart className="h-3 w-3" />{likeCount}</span>
           <span className="flex items-center gap-1">
-            {type === "game" ? <Play className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+            {type === "game" ? <Play className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
             {playOrViewCount}
           </span>
         </div>
