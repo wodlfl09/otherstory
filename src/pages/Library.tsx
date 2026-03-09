@@ -312,9 +312,34 @@ export default function Library() {
                           )}
                           <span className="hidden sm:inline">재진행</span>
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={(e) => openPublishModal(e, item)} className="gap-1 text-xs h-7 px-2">
-                          <Share2 className="h-3 w-3" /><span className="hidden sm:inline">공개</span>
-                        </Button>
+                        {/* Publish toggle */}
+                        <button
+                          onClick={(e) => togglePublish(e, item)}
+                          disabled={togglingPublishId === item.story?.id}
+                          className="relative flex items-center h-7 w-[58px] rounded-full bg-muted border border-border transition-colors cursor-pointer disabled:opacity-50 shrink-0"
+                        >
+                          {togglingPublishId === item.story?.id ? (
+                            <span className="flex w-full items-center justify-center">
+                              <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                            </span>
+                          ) : (
+                            <>
+                              <span
+                                className={`absolute top-0.5 left-0.5 flex h-[22px] w-[22px] items-center justify-center rounded-full shadow transition-all duration-300 ${
+                                  item.story?.is_public
+                                    ? "translate-x-[30px] bg-primary"
+                                    : "translate-x-0 bg-secondary"
+                                }`}
+                              >
+                                {item.story?.is_public ? (
+                                  <Globe className="h-3 w-3 text-primary-foreground" />
+                                ) : (
+                                  <GlobeLock className="h-3 w-3 text-muted-foreground" />
+                                )}
+                              </span>
+                            </>
+                          )}
+                        </button>
                         <Button variant="ghost" size="sm" onClick={(e) => removeItem(e, item.id, item.story?.id)} className="ml-auto text-muted-foreground hover:text-destructive h-7 px-2">
                           <Trash2 className="h-3 w-3" />
                         </Button>
