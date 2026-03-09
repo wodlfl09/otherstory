@@ -139,7 +139,7 @@ export default function GamePlay() {
   };
 
   const handleChoice = async (choiceId: string) => {
-    if (checkAdGate()) { setShowAd(true); startAdTimer(); return; }
+    if (checkAdGate(choiceId)) { setShowAd(true); startAdTimer(); return; }
 
     const selectedChoice = node?.choices?.find(c => c.id === choiceId);
     setChoosing(true);
