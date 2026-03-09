@@ -93,7 +93,7 @@ export default function Home() {
       </section>
 
       {/* Gallery */}
-      <section className="px-2 sm:px-4 lg:px-6 pb-20">
+      <section className="px-2 sm:px-4 lg:px-6 pb-24 sm:pb-20">
         <h2 className="mb-4 px-2 font-display text-lg font-bold tracking-wider text-foreground">
           🔥 인기 작품
         </h2>
