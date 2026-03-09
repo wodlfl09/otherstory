@@ -154,7 +154,7 @@ export default function StoryReader() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <div className="container mx-auto max-w-3xl px-4 pt-24 pb-16">
+      <div className="container mx-auto max-w-3xl px-4 pt-16 sm:pt-24 pb-20 sm:pb-16">
         {/* Header - mobile optimized */}
         <div className="mb-6 space-y-3">
           <div className="flex items-start gap-3">
