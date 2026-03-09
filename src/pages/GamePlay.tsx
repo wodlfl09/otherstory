@@ -113,11 +113,16 @@ export default function GamePlay() {
     setLoading(false);
   };
 
-  const checkAdGate = () => {
-    if (!session) return false;
+  const checkAdGate = (choiceId: string) => {
+    if (!session || !node) return false;
     if (session.ad_shown || !session.ad_required) return false;
-    const midpoints: Record<number, number> = { 10: 3, 20: 6, 30: 9 };
-    return session.step === (midpoints[session.duration_min as number] ?? 999);
+    // Only show ad before the final ending
+    const selectedChoice = node.choices?.find(c => c.id === choiceId);
+    if (!selectedChoice) return false;
+    // Check if next node is an ending (no further choices)
+    // We detect this by checking if we're at the second-to-last step
+    const totalSteps = session.duration_min === 10 ? 7 : session.duration_min === 20 ? 13 : 19;
+    return session.step >= totalSteps - 2;
   };
 
   const getFeedbackFromChoice = (choice: Choice): ChoiceFeedback[] => {
