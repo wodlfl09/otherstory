@@ -455,6 +455,7 @@ export type Database = {
           config: Json | null
           cover_url: string | null
           created_at: string
+          deleted_at: string | null
           genre: string
           id: string
           is_public: boolean | null
@@ -468,6 +469,7 @@ export type Database = {
           config?: Json | null
           cover_url?: string | null
           created_at?: string
+          deleted_at?: string | null
           genre: string
           id?: string
           is_public?: boolean | null
@@ -481,6 +483,7 @@ export type Database = {
           config?: Json | null
           cover_url?: string | null
           created_at?: string
+          deleted_at?: string | null
           genre?: string
           id?: string
           is_public?: boolean | null
