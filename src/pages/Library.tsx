@@ -6,10 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useNavigate } from "react-router-dom";
-import { BookOpen, Trash2, RotateCcw, Share2, Loader2, Sparkles } from "lucide-react";
+import { BookOpen, Trash2, RotateCcw, Loader2, Sparkles, Globe, GlobeLock } from "lucide-react";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { toast } from "sonner";
-import PublishModal from "@/components/PublishModal";
+
 import DeleteGameDialog from "@/components/DeleteGameDialog";
 
 interface LibraryEntry {
@@ -41,10 +41,11 @@ export default function Library() {
   const [items, setItems] = useState<LibraryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [replayingId, setReplayingId] = useState<string | null>(null);
-  const [publishTarget, setPublishTarget] = useState<{ storyId: string; title: string; synopsis: string; coverUrl: string; protagonistName: string } | null>(null);
+  
   const [activeJob, setActiveJob] = useState<any>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ itemId: string; storyId: string } | null>(null);
   const [deletingItem, setDeletingItem] = useState(false);
+  const [togglingPublishId, setTogglingPublishId] = useState<string | null>(null);
 
   const maxItems = profile?.plan === "pro" ? Infinity : profile?.plan === "basic" ? 9 : 3;
 
@@ -188,15 +189,37 @@ export default function Library() {
     }
   };
 
-  const openPublishModal = (e: React.MouseEvent, item: LibraryEntry) => {
+  const togglePublish = async (e: React.MouseEvent, item: LibraryEntry) => {
     e.stopPropagation();
-    setPublishTarget({
-      storyId: item.story?.id,
-      title: item.story?.title || "",
-      synopsis: item.story?.synopsis || "",
-      coverUrl: item.story?.cover_url || item.fallbackCover || "",
-      protagonistName: item.story?.protagonist_name || "",
-    });
+    const storyId = item.story?.id;
+    if (!storyId) return;
+    setTogglingPublishId(storyId);
+    try {
+      if (item.story?.is_public) {
+        await supabase.from("stories").update({ is_public: false }).eq("id", storyId);
+        await supabase.from("public_games").delete().eq("story_id", storyId);
+        setItems((prev) => prev.map((i) => i.story?.id === storyId ? { ...i, story: { ...i.story, is_public: false } } : i));
+        toast.success("비공개로 전환되었습니다.");
+      } else {
+        const { error } = await supabase.functions.invoke("publish-content", {
+          body: {
+            type: "game",
+            story_id: storyId,
+            title: item.story?.title,
+            synopsis: item.story?.synopsis,
+            cover_url: item.story?.cover_url || item.fallbackCover,
+            protagonist_name: item.story?.protagonist_name,
+          },
+        });
+        if (error) throw error;
+        setItems((prev) => prev.map((i) => i.story?.id === storyId ? { ...i, story: { ...i.story, is_public: true } } : i));
+        toast.success("공개되었습니다!");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "변경 실패");
+    } finally {
+      setTogglingPublishId(null);
+    }
   };
 
   return (
@@ -289,9 +312,34 @@ export default function Library() {
                           )}
                           <span className="hidden sm:inline">재진행</span>
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={(e) => openPublishModal(e, item)} className="gap-1 text-xs h-7 px-2">
-                          <Share2 className="h-3 w-3" /><span className="hidden sm:inline">공개</span>
-                        </Button>
+                        {/* Publish toggle */}
+                        <button
+                          onClick={(e) => togglePublish(e, item)}
+                          disabled={togglingPublishId === item.story?.id}
+                          className="relative flex items-center h-7 w-[58px] rounded-full bg-muted border border-border transition-colors cursor-pointer disabled:opacity-50 shrink-0"
+                        >
+                          {togglingPublishId === item.story?.id ? (
+                            <span className="flex w-full items-center justify-center">
+                              <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                            </span>
+                          ) : (
+                            <>
+                              <span
+                                className={`absolute top-0.5 left-0.5 flex h-[22px] w-[22px] items-center justify-center rounded-full shadow transition-all duration-300 ${
+                                  item.story?.is_public
+                                    ? "translate-x-[30px] bg-primary"
+                                    : "translate-x-0 bg-secondary"
+                                }`}
+                              >
+                                {item.story?.is_public ? (
+                                  <Globe className="h-3 w-3 text-primary-foreground" />
+                                ) : (
+                                  <GlobeLock className="h-3 w-3 text-muted-foreground" />
+                                )}
+                              </span>
+                            </>
+                          )}
+                        </button>
                         <Button variant="ghost" size="sm" onClick={(e) => removeItem(e, item.id, item.story?.id)} className="ml-auto text-muted-foreground hover:text-destructive h-7 px-2">
                           <Trash2 className="h-3 w-3" />
                         </Button>
@@ -305,20 +353,6 @@ export default function Library() {
         )}
       </div>
 
-      {publishTarget && (
-        <PublishModal
-          open={!!publishTarget}
-          onOpenChange={(val) => { if (!val) setPublishTarget(null); }}
-          mode="game"
-          storyId={publishTarget.storyId}
-          defaults={{
-            title: publishTarget.title,
-            synopsis: publishTarget.synopsis,
-            coverUrl: publishTarget.coverUrl,
-            protagonistName: publishTarget.protagonistName,
-          }}
-        />
-      )}
 
       <DeleteGameDialog
         open={!!deleteTarget}
