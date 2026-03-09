@@ -295,6 +295,9 @@ ${nodeDescs}
             console.error(`AI attempt ${attempt + 1} error:`, retryErr);
           }
         }
+      } catch (aiErr) {
+        console.error("AI generation error:", aiErr);
+      }
     }
 
     // Map generated content to graph nodes
