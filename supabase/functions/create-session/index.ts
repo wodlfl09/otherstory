@@ -104,7 +104,7 @@ serve(async (req) => {
 
     const storyConfig = { name, gender, protagonist, keywords, customStory, duration_min, choices_count, endings_count, total_steps: totalSteps };
     const { data: story, error: storyErr } = await supabase.from("stories").insert({
-      user_id: user.id, title: `${genre} 모험 - ${name}`, genre,
+      user_id: user.id, title: name, genre,
       source_type: customStory ? "custom" : "simple", config: storyConfig, protagonist_name: name,
     }).select().single();
     if (storyErr) throw storyErr;
