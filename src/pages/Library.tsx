@@ -41,7 +41,7 @@ export default function Library() {
   const [items, setItems] = useState<LibraryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [replayingId, setReplayingId] = useState<string | null>(null);
-  const [publishTarget, setPublishTarget] = useState<{ storyId: string; title: string; synopsis: string; coverUrl: string; protagonistName: string } | null>(null);
+  
   const [activeJob, setActiveJob] = useState<any>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ itemId: string; storyId: string } | null>(null);
   const [deletingItem, setDeletingItem] = useState(false);
