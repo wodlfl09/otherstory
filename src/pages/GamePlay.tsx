@@ -219,6 +219,12 @@ export default function GamePlay() {
     await supabase.functions.invoke("mark-ad-shown", { body: { session_id: sessionId } });
     setShowAd(false);
     setSession((s: any) => s ? { ...s, ad_shown: true } : s);
+    // Continue with the pending choice after ad
+    if (pendingChoiceRef.current) {
+      const choiceId = pendingChoiceRef.current;
+      pendingChoiceRef.current = null;
+      handleChoice(choiceId);
+    }
   };
 
   const attitudeStyles: Record<string, { border: string; icon: string; glow: string }> = {
