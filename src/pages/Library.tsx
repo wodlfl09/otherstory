@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useNavigate } from "react-router-dom";
-import { BookOpen, Trash2, RotateCcw, Share2, Loader2, Sparkles } from "lucide-react";
+import { BookOpen, Trash2, RotateCcw, Loader2, Sparkles, Globe, GlobeLock } from "lucide-react";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { toast } from "sonner";
 import PublishModal from "@/components/PublishModal";
