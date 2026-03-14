@@ -468,7 +468,7 @@ export default function GamePlay() {
             <div className="w-full relative">
               {node.image_url ? (
                 motionComic ? (
-                  <MotionComic imageUrl={node.image_url} genre={(session?.state as any)?.genre || "horror"} step={node.step} />
+                  <MotionComic imageUrl={node.image_url} genre={storyGenre} step={node.step} />
                 ) : (
                   <AspectRatio ratio={16 / 9} className="overflow-hidden">
                     <img src={node.image_url} alt={`장면 ${currentStep}`} className="h-full w-full object-cover" />

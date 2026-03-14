@@ -112,28 +112,28 @@
     transform: scale(1) translate(var(--kb-start-x, 0%), var(--kb-start-y, 0%));
   }
   100% {
-    transform: scale(1.10) translate(var(--kb-end-x, -4%), var(--kb-end-y, -3%));
+    transform: scale(1.06) translate(var(--kb-end-x, -3%), var(--kb-end-y, -2%));
   }
 }
 
 @keyframes mc-micro-shake {
   0%, 100% { transform: translate(0, 0); }
-  25% { transform: translate(0.3%, -0.2%); }
-  50% { transform: translate(-0.2%, 0.3%); }
-  75% { transform: translate(0.2%, 0.1%); }
+  25% { transform: translate(0.2%, -0.15%); }
+  50% { transform: translate(-0.15%, 0.2%); }
+  75% { transform: translate(0.15%, 0.1%); }
 }
 
 @keyframes mc-crossfade {
   0% { opacity: 0; }
-  8% { opacity: 1; }
+  6% { opacity: 1; }
   100% { opacity: 1; }
 }
 
 @keyframes mc-glitch {
-  0%, 94%, 100% { clip-path: inset(0); opacity: 0; }
-  95% { clip-path: inset(30% 0 40% 0); opacity: 0.7; transform: translateX(2%); }
-  96% { clip-path: inset(60% 0 10% 0); opacity: 0.5; transform: translateX(-3%); }
-  97% { clip-path: inset(0); opacity: 0; }
+  0%, 95%, 100% { clip-path: inset(0); opacity: 0; }
+  96% { clip-path: inset(30% 0 40% 0); opacity: 0.5; transform: translateX(1.5%); }
+  97% { clip-path: inset(60% 0 10% 0); opacity: 0.35; transform: translateX(-2%); }
+  98% { clip-path: inset(0); opacity: 0; }
 }
 
 @keyframes mc-text-reveal {
@@ -142,7 +142,7 @@
 }
 
 .motion-comic-image {
-  animation: mc-ken-burns 6s ease-out forwards, mc-micro-shake 3s ease-in-out infinite;
+  animation: mc-ken-burns 6s ease-out forwards, mc-micro-shake 4s ease-in-out infinite;
   will-change: transform;
 }
 
