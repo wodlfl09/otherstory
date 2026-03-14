@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { toast } from "sonner";
-import { Film, ImageIcon, AlertTriangle, Shield, Clock, Brain, Search, ArrowLeft, Home, Swords } from "lucide-react";
+import { Film, Volume2, VolumeX, ImageIcon, AlertTriangle, Shield, Clock, Brain, Search, ArrowLeft, Home, Swords } from "lucide-react";
 
 const GENRE_LABELS: Record<string, string> = {
   sf: "SF", fantasy: "판타지", mystery: "추리", action: "액션",
