@@ -86,6 +86,16 @@ export default function GamePlay() {
   const tts = useTTS();
   const [choicesReady, setChoicesReady] = useState(false);
 
+  // Trigger TTS and reset choices visibility on scene change
+  useEffect(() => {
+    if (node?.scene_text) {
+      setChoicesReady(false);
+      tts.speak(node.scene_text);
+    }
+    return () => tts.stop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [node?.node_id]);
+
   useEffect(() => { loadCurrentScene(); }, [sessionId]);
 
   const loadCurrentScene = async () => {
