@@ -51,16 +51,386 @@ function buildGraph(totalSteps: number, choicesCount: number, endingsCount: numb
   return nodes;
 }
 
-async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number): Promise<Response> {
+async function fetchAI(apiKey: string, body: any, timeoutMs = 60000): Promise<any> {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return await fetch(url, { ...options, signal: controller.signal });
+    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    if (!resp.ok) throw new Error(`AI ${resp.status}: ${await resp.text()}`);
+    return await resp.json();
   } finally {
     clearTimeout(id);
   }
 }
 
+function extractToolArgs(aiData: any): any | null {
+  const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
+  if (!toolCall) return null;
+  try { return JSON.parse(toolCall.function.arguments); } catch { return null; }
+}
+
+async function updateJobStage(supabase: any, jobId: string, stage: string, progressPercent: number, etaSeconds?: number) {
+  await supabase.from("generation_jobs").update({
+    current_stage: stage,
+    progress_percent: progressPercent,
+    ...(etaSeconds !== undefined ? { eta_seconds: etaSeconds } : {}),
+  }).eq("id", jobId);
+}
+
+/* ══════════════════════════════════════════════
+   AGENT 1: Plot Agent — 장면 텍스트 생성
+   ══════════════════════════════════════════════ */
+async function runPlotAgent(
+  apiKey: string, graph: GraphNodeDef[], genre: string,
+  name: string, gender: string, protagonist: string, keywords: string, customStory: string
+): Promise<Map<string, { scene_text: string }>> {
+  const genreDescMap: Record<string, string> = {
+    horror: "심리 공포/서바이벌 호러", mystery: "하드보일드 미스터리/추리",
+    action: "극한 스릴러/서스펜스", romance: "감성 로맨스", sf: "SF/과학 판타지",
+  };
+  const genreDesc = genreDescMap[genre] || "다크 스릴러";
+
+  const nodeDescs = graph.map(n => {
+    if (n.is_ending) return `"${n.node_id}": ${n.variant_desc} (엔딩)`;
+    return `"${n.node_id}": ${n.variant_desc}`;
+  }).join("\n");
+
+  const systemPrompt = `당신은 ${genreDesc} 장르의 시네마틱 게임 시나리오 작가입니다.
+아래 노드 목록의 각 장면 텍스트(scene_text)만 생성하세요.
+
+주인공: ${name} (${gender === "male" ? "남성" : "여성"})
+${protagonist ? `설정: ${protagonist}` : ""}
+${keywords ? `키워드: ${keywords}` : ""}
+${customStory ? `세계관: ${customStory}` : ""}
+
+노드 목록 (${graph.length}개):
+${nodeDescs}
+
+[장면 텍스트 규칙]
+1. 한국어 220~350자 (3~5문장)
+2. 카메라가 비추는 듯 시각적 묘사
+3. 과거형 서술체
+4. 매 장면 마지막은 선택의 갈림길 (엔딩 제외)
+5. 감각 묘사 최소 1가지
+6. 엔딩 노드는 200~300자, 여운 있는 결말`;
+
+  const models = ["google/gemini-2.5-flash", "google/gemini-3-flash-preview"];
+  for (const model of models) {
+    try {
+      const aiData = await fetchAI(apiKey, {
+        model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `${graph.length}개 노드의 scene_text를 생성하세요.` },
+        ],
+        tools: [{
+          type: "function",
+          function: {
+            name: "generate_plot",
+            description: "Generate scene texts for all nodes",
+            parameters: {
+              type: "object",
+              properties: {
+                nodes: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      node_id: { type: "string" },
+                      scene_text: { type: "string" },
+                    },
+                    required: ["node_id", "scene_text"],
+                  },
+                },
+              },
+              required: ["nodes"],
+            },
+          },
+        }],
+        tool_choice: { type: "function", function: { name: "generate_plot" } },
+      });
+
+      const args = extractToolArgs(aiData);
+      if (args?.nodes?.length > 0) {
+        console.log(`PlotAgent: ${args.nodes.length} scenes via ${model}`);
+        return new Map(args.nodes.map((n: any) => [n.node_id, { scene_text: n.scene_text }]));
+      }
+    } catch (err) { console.error(`PlotAgent ${model} failed:`, err); }
+  }
+  return new Map();
+}
+
+/* ══════════════════════════════════════════════
+   AGENT 2: Choice Agent — 선택지 생성
+   ══════════════════════════════════════════════ */
+async function runChoiceAgent(
+  apiKey: string, graph: GraphNodeDef[], plotMap: Map<string, { scene_text: string }>,
+  choicesCount: number, genre: string
+): Promise<Map<string, any[]>> {
+  const nonEnding = graph.filter(n => !n.is_ending);
+  const nodeContext = nonEnding.map(n => {
+    const scene = plotMap.get(n.node_id)?.scene_text || "";
+    const conns = n.next_node_ids.map((nid, i) => `선택${i + 1}→"${nid}"`).join(", ");
+    return `"${n.node_id}" (장면: ${scene.slice(0, 60)}...) [${conns}]`;
+  }).join("\n");
+
+  const systemPrompt = `각 노드에 대해 ${choicesCount}개의 선택지를 생성하세요.
+장르: ${genre}
+
+노드 목록:
+${nodeContext}
+
+[선택지 규칙]
+1. ${choicesCount}개, 한국어 8~20자
+2. 구체적 행동 동사로 시작
+3. 태도: positive, negative, avoidance
+4. 각 선택지에 feedback (clue/danger/trust/time/sanity 중 1~2개, delta는 -2~+2)
+5. next_node_id는 반드시 위 [연결] 정보를 따라야 함`;
+
+  const models = ["google/gemini-2.5-flash", "google/gemini-3-flash-preview"];
+  for (const model of models) {
+    try {
+      const aiData = await fetchAI(apiKey, {
+        model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `${nonEnding.length}개 노드의 선택지를 생성하세요.` },
+        ],
+        tools: [{
+          type: "function",
+          function: {
+            name: "generate_choices",
+            description: "Generate choices for each non-ending node",
+            parameters: {
+              type: "object",
+              properties: {
+                nodes: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      node_id: { type: "string" },
+                      choices: {
+                        type: "array",
+                        items: {
+                          type: "object",
+                          properties: {
+                            id: { type: "string" },
+                            label: { type: "string" },
+                            attitude: { type: "string", enum: ["positive", "negative", "avoidance"] },
+                            next_node_id: { type: "string" },
+                            feedback: {
+                              type: "array",
+                              items: {
+                                type: "object",
+                                properties: {
+                                  type: { type: "string", enum: ["clue", "danger", "trust", "time", "sanity"] },
+                                  label: { type: "string" },
+                                  delta: { type: "number" },
+                                },
+                                required: ["type", "label", "delta"],
+                              },
+                            },
+                          },
+                          required: ["id", "label", "attitude", "next_node_id"],
+                        },
+                      },
+                    },
+                    required: ["node_id", "choices"],
+                  },
+                },
+              },
+              required: ["nodes"],
+            },
+          },
+        }],
+        tool_choice: { type: "function", function: { name: "generate_choices" } },
+      });
+
+      const args = extractToolArgs(aiData);
+      if (args?.nodes?.length > 0) {
+        console.log(`ChoiceAgent: ${args.nodes.length} nodes via ${model}`);
+        return new Map(args.nodes.map((n: any) => [n.node_id, n.choices]));
+      }
+    } catch (err) { console.error(`ChoiceAgent ${model} failed:`, err); }
+  }
+  return new Map();
+}
+
+/* ══════════════════════════════════════════════
+   AGENT 3: Visual Agent — 캐릭터 바이블 + 이미지 브리프
+   ══════════════════════════════════════════════ */
+async function runVisualAgent(
+  apiKey: string, graph: GraphNodeDef[], plotMap: Map<string, { scene_text: string }>,
+  name: string, gender: string, genre: string
+): Promise<{ characterBible: any; imageBriefs: Map<string, string> }> {
+  const scenesSummary = graph.slice(0, 5).map(n => {
+    const t = plotMap.get(n.node_id)?.scene_text || "";
+    return `"${n.node_id}": ${t.slice(0, 80)}`;
+  }).join("\n");
+
+  const allNodeIds = graph.map(n => `"${n.node_id}"`).join(", ");
+
+  const systemPrompt = `당신은 시네마틱 게임의 비주얼 디렉터입니다.
+
+주인공: ${name} (${gender === "male" ? "남성" : "여성"})
+장르: ${genre}
+
+장면 요약:
+${scenesSummary}
+
+1. character_bible을 생성하세요 (영어):
+   - name, appearance (hair, eyes, build, clothing, distinctive_features)
+2. 모든 노드(${graph.length}개: ${allNodeIds})에 대해 image_brief를 생성하세요:
+   - 영어 25단어 이내
+   - 다크 시네마틱 반실사 톤`;
+
+  const models = ["google/gemini-2.5-flash", "google/gemini-3-flash-preview"];
+  for (const model of models) {
+    try {
+      const aiData = await fetchAI(apiKey, {
+        model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `character_bible과 ${graph.length}개 노드의 image_brief를 생성하세요.` },
+        ],
+        tools: [{
+          type: "function",
+          function: {
+            name: "generate_visuals",
+            description: "Generate character bible and image briefs",
+            parameters: {
+              type: "object",
+              properties: {
+                character_bible: {
+                  type: "object",
+                  properties: {
+                    name: { type: "string" },
+                    appearance: {
+                      type: "object",
+                      properties: {
+                        hair: { type: "string" }, eyes: { type: "string" },
+                        build: { type: "string" }, clothing: { type: "string" },
+                        distinctive_features: { type: "string" },
+                      },
+                    },
+                  },
+                },
+                image_briefs: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      node_id: { type: "string" },
+                      image_brief: { type: "string" },
+                    },
+                    required: ["node_id", "image_brief"],
+                  },
+                },
+              },
+              required: ["character_bible", "image_briefs"],
+            },
+          },
+        }],
+        tool_choice: { type: "function", function: { name: "generate_visuals" } },
+      });
+
+      const args = extractToolArgs(aiData);
+      if (args?.image_briefs?.length > 0) {
+        console.log(`VisualAgent: bible + ${args.image_briefs.length} briefs via ${model}`);
+        return {
+          characterBible: args.character_bible || null,
+          imageBriefs: new Map(args.image_briefs.map((b: any) => [b.node_id, b.image_brief])),
+        };
+      }
+    } catch (err) { console.error(`VisualAgent ${model} failed:`, err); }
+  }
+  return { characterBible: null, imageBriefs: new Map() };
+}
+
+/* ══════════════════════════════════════════════
+   AGENT 4: QA Agent — 톤/길이/일관성/금지어 검사
+   ══════════════════════════════════════════════ */
+async function runQAAgent(
+  apiKey: string,
+  nodes: Array<{ node_id: string; scene_text: string; choices: any[] | null }>,
+  genre: string
+): Promise<Map<string, { scene_text?: string; choices?: any[] }>> {
+  const nodesForReview = nodes.slice(0, 30).map(n => ({
+    node_id: n.node_id,
+    scene_text: n.scene_text,
+    choices_count: n.choices?.length || 0,
+    scene_length: n.scene_text.length,
+  }));
+
+  const systemPrompt = `당신은 시네마틱 게임 시나리오의 품질 검수 담당자입니다.
+장르: ${genre}
+
+아래 노드들을 검사하고, 문제가 있는 노드만 수정된 scene_text를 반환하세요.
+
+[검사 항목]
+1. 톤: ${genre} 장르에 맞는 분위기인지
+2. 길이: scene_text가 150~400자 범위인지 (너무 짧거나 긴 것 수정)
+3. 일관성: 서술체가 과거형인지, 문체가 통일되어 있는지
+4. 금지어: 현실 브랜드명, 부적절한 표현, 메타적 표현("이 게임에서" 등) 제거
+5. 감각 묘사: 최소 1가지 포함되어 있는지
+
+문제 없는 노드는 반환하지 마세요. 수정이 필요한 노드만 반환하세요.`;
+
+  try {
+    const aiData = await fetchAI(apiKey, {
+      model: "google/gemini-2.5-flash",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: `다음 ${nodesForReview.length}개 노드를 검사하세요:\n${JSON.stringify(nodesForReview)}` },
+      ],
+      tools: [{
+        type: "function",
+        function: {
+          name: "qa_review",
+          description: "Return only nodes that need corrections",
+          parameters: {
+            type: "object",
+            properties: {
+              corrections: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    node_id: { type: "string" },
+                    scene_text: { type: "string" },
+                    issue: { type: "string" },
+                  },
+                  required: ["node_id", "scene_text", "issue"],
+                },
+              },
+              passed: { type: "boolean" },
+            },
+            required: ["corrections", "passed"],
+          },
+        },
+      }],
+      tool_choice: { type: "function", function: { name: "qa_review" } },
+    });
+
+    const args = extractToolArgs(aiData);
+    if (args) {
+      const corrections = args.corrections || [];
+      console.log(`QAAgent: ${corrections.length} corrections, passed=${args.passed}`);
+      return new Map(corrections.map((c: any) => [c.node_id, { scene_text: c.scene_text }]));
+    }
+  } catch (err) { console.error("QAAgent failed:", err); }
+  return new Map();
+}
+
+/* ══════════════════════════════════════════════
+   Main Handler
+   ══════════════════════════════════════════════ */
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -122,24 +492,15 @@ serve(async (req) => {
     }).select().single();
     if (sessErr) throw sessErr;
 
-    // Build graph structure
     const graph = buildGraph(totalSteps, choices_count, endings_count);
-
-    // Estimate ETA: ~25s text + ~12s per batch of 3 images
     const imageBatches = Math.ceil(graph.length / 3);
-    const etaSeconds = 25 + imageBatches * 12;
+    const etaSeconds = 60 + imageBatches * 12; // ~60s for 4 agents + image time
 
-    // Create generation job
     const { data: job, error: jobErr } = await supabase.from("generation_jobs").insert({
-      user_id: user.id,
-      story_id: story.id,
-      session_id: session.id,
-      status: "generating_text",
-      progress_percent: 0,
-      current_stage: "스토리 구조 생성 중",
-      eta_seconds: etaSeconds,
-      total_nodes: graph.length,
-      completed_nodes: 0,
+      user_id: user.id, story_id: story.id, session_id: session.id,
+      status: "generating_text", progress_percent: 0,
+      current_stage: "스토리 구조 생성 중", eta_seconds: etaSeconds,
+      total_nodes: graph.length, completed_nodes: 0,
     }).select().single();
     if (jobErr) throw jobErr;
 
@@ -147,197 +508,75 @@ serve(async (req) => {
       await supabase.from("credit_tx").insert({ idempotency_key, user_id: user.id, kind: "create_session", delta: -10, ref: { story_id: story.id, session_id: session.id, job_id: job.id } });
     }
 
-    // Generate text for all nodes via AI
-    let generatedNodes: any[] = [];
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) throw new Error("No API key configured");
 
-    if (LOVABLE_API_KEY) {
-      try {
-        const genreDescMap: Record<string, string> = {
-          horror: "심리 공포/서바이벌 호러",
-          mystery: "하드보일드 미스터리/추리",
-          action: "극한 스릴러/서스펜스",
-        };
-        const genreDesc = genreDescMap[genre] || "다크 스릴러";
+    /* ── STAGE 1: Plot Agent ── */
+    await updateJobStage(supabase, job.id, "스토리 구조 생성 중", 2, etaSeconds);
+    const plotMap = await runPlotAgent(LOVABLE_API_KEY, graph, genre, name, gender, protagonist || "", keywords || "", customStory || "");
 
-        const nodeDescs = graph.map(n => {
-          if (n.is_ending) return `"${n.node_id}": ${n.variant_desc} (선택지 없음)`;
-          const conns = n.next_node_ids.map((nid, i) => `선택${i + 1}→"${nid}"`).join(", ");
-          return `"${n.node_id}": ${n.variant_desc} [${conns}]`;
-        }).join("\n");
+    /* ── STAGE 2: Choice Agent ── */
+    await updateJobStage(supabase, job.id, "선택지 분기 설계 중", 8, Math.round(etaSeconds * 0.7));
+    const choiceMap = await runChoiceAgent(LOVABLE_API_KEY, graph, plotMap, choices_count, genre);
 
-        const systemPrompt = `당신은 ${genreDesc} 장르의 시네마틱 게임 시나리오 작가입니다.
-선택형 시네마 스토리 게임의 모든 장면을 생성하세요.
+    /* ── STAGE 3: Visual Agent ── */
+    await updateJobStage(supabase, job.id, "등장인물 설정 정리 중", 14, Math.round(etaSeconds * 0.5));
+    const { characterBible, imageBriefs } = await runVisualAgent(LOVABLE_API_KEY, graph, plotMap, name, gender, genre);
 
-[핵심 원칙]
-- 이것은 "읽는 소설"이 아니라 "판단하는 게임"입니다
-- 장면은 짧고 강렬하게. 긴장감과 선택의 무게감이 핵심
-
-주인공: ${name} (${gender === "male" ? "남성" : "여성"})
-${protagonist ? `설정: ${protagonist}` : ""}
-${keywords ? `키워드: ${keywords}` : ""}
-${customStory ? `세계관: ${customStory}` : ""}
-
-스토리 구조 (총 ${graph.length}개 노드):
-${nodeDescs}
-
-[장면 텍스트 규칙]
-1. 한국어 220~350자 (3~5문장)
-2. 카메라가 비추는 것처럼 장면을 보여주세요
-3. 과거형 서술체
-4. 매 장면 마지막은 선택의 갈림길
-5. 필수: 감각 묘사 최소 1가지
-
-[선택지 규칙]
-1. ${choices_count}개, 한국어 8~20자
-2. 구체적 행동 동사로 시작
-3. 태도: positive, negative, avoidance
-4. 각 선택지에 feedback 추가 (clue/danger/trust/time/sanity 중 1~2개)
-
-[이미지 규칙]
-1. image_brief: 영어 25단어 이내
-2. 다크 시네마틱 반실사 톤
-
-[엔딩 규칙]
-1. 선택지 없음
-2. 짧고 여운 있는 결말 (200~300자)`;
-
-        const aiRequestBody = JSON.stringify({
-            model: "google/gemini-2.5-flash",
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: `위 구조에 맞는 전체 ${graph.length}개 노드를 생성하세요. 각 노드의 node_id, scene_text, image_brief, choices를 빠짐없이 포함하세요.` },
-            ],
-            tools: [{
-              type: "function",
-              function: {
-                name: "generate_story_graph",
-                description: "Generate all story nodes",
-                parameters: {
-                  type: "object",
-                  properties: {
-                    nodes: {
-                      type: "array",
-                      items: {
-                        type: "object",
-                        properties: {
-                          node_id: { type: "string" },
-                          scene_text: { type: "string" },
-                          image_brief: { type: "string" },
-                          choices: {
-                            type: "array",
-                            items: {
-                              type: "object",
-                              properties: {
-                                id: { type: "string" },
-                                label: { type: "string" },
-                                attitude: { type: "string", enum: ["positive", "negative", "avoidance"] },
-                                next_node_id: { type: "string" },
-                                feedback: {
-                                  type: "array",
-                                  items: {
-                                    type: "object",
-                                    properties: {
-                                      type: { type: "string", enum: ["clue", "danger", "trust", "time", "sanity"] },
-                                      label: { type: "string" },
-                                      delta: { type: "number" },
-                                    },
-                                    required: ["type", "label", "delta"],
-                                  },
-                                },
-                              },
-                              required: ["id", "label", "attitude", "next_node_id"],
-                            },
-                          },
-                        },
-                        required: ["node_id", "scene_text", "image_brief"],
-                      },
-                    },
-                  },
-                  required: ["nodes"],
-                },
-              },
-            }],
-            tool_choice: { type: "function", function: { name: "generate_story_graph" } },
-          });
-
-        // Try up to 2 times with different models
-        const models = ["google/gemini-2.5-flash", "google/gemini-3-flash-preview"];
-        for (let attempt = 0; attempt < models.length; attempt++) {
-          try {
-            const bodyWithModel = JSON.parse(aiRequestBody);
-            bodyWithModel.model = models[attempt];
-            console.log(`AI attempt ${attempt + 1} with model ${models[attempt]}`);
-
-            const aiResponse = await fetchWithTimeout("https://ai.gateway.lovable.dev/v1/chat/completions", {
-              method: "POST",
-              headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-              body: JSON.stringify(bodyWithModel),
-            }, 60000);
-
-            if (aiResponse.ok) {
-              const aiData = await aiResponse.json();
-              const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-              if (toolCall) {
-                const args = JSON.parse(toolCall.function.arguments);
-                if (args.nodes && Array.isArray(args.nodes) && args.nodes.length > 0) {
-                  generatedNodes = args.nodes;
-                  console.log(`AI generated ${generatedNodes.length} nodes on attempt ${attempt + 1}`);
-                  break;
-                }
-              }
-              console.error(`AI attempt ${attempt + 1}: no valid nodes in response`);
-            } else {
-              const errText = await aiResponse.text();
-              console.error(`AI attempt ${attempt + 1} failed: ${aiResponse.status} - ${errText}`);
-            }
-          } catch (retryErr) {
-            console.error(`AI attempt ${attempt + 1} error:`, retryErr);
-          }
-        }
-      } catch (aiErr) {
-        console.error("AI generation error:", aiErr);
-      }
+    // Save character_bible to story config
+    if (characterBible) {
+      const updatedConfig = { ...storyConfig, character_bible: characterBible };
+      await supabase.from("stories").update({ config: updatedConfig }).eq("id", story.id);
     }
 
-    // Map generated content to graph nodes
-    const generatedMap = new Map(generatedNodes.map((n: any) => [n.node_id, n]));
-    const nodesToInsert = graph.map(gn => {
-      const gen = generatedMap.get(gn.node_id);
-      const sceneText = gen?.scene_text || `${name}의 이야기가 계속됩니다...`;
-      const imageBrief = gen?.image_brief || `dark cinematic ${genre} scene, dramatic lighting`;
-
+    /* ── STAGE 4: QA Agent ── */
+    await updateJobStage(supabase, job.id, "최종 검수 중", 17, Math.round(etaSeconds * 0.35));
+    const preQANodes = graph.map(gn => {
+      const sceneText = plotMap.get(gn.node_id)?.scene_text || `${name}의 이야기가 계속됩니다...`;
       let choices = null;
       if (!gn.is_ending) {
-        if (gen?.choices && gen.choices.length >= choices_count) {
-          choices = gen.choices.slice(0, choices_count).map((c: any, i: number) => ({
+        const aiChoices = choiceMap.get(gn.node_id);
+        if (aiChoices && aiChoices.length >= choices_count) {
+          choices = aiChoices.slice(0, choices_count).map((c: any, i: number) => ({
             id: c.id || `c${i}`, label: c.label || `선택지 ${i + 1}`,
             attitude: c.attitude || "neutral", next_node_id: gn.next_node_ids[i] || gn.next_node_ids[0],
             feedback: c.feedback || [],
           }));
         } else {
           choices = gn.next_node_ids.map((nid, i) => ({
-            id: `c${i}`, label: gen?.choices?.[i]?.label || `선택지 ${i + 1}`,
+            id: `c${i}`, label: aiChoices?.[i]?.label || `선택지 ${i + 1}`,
             attitude: ["positive", "negative", "avoidance"][i] || "neutral", next_node_id: nid,
             feedback: [],
           }));
         }
       }
+      return { node_id: gn.node_id, scene_text: sceneText, choices };
+    });
+
+    const qaCorrections = await runQAAgent(LOVABLE_API_KEY, preQANodes, genre);
+
+    /* ── Build final nodes ── */
+    const nodesToInsert = graph.map(gn => {
+      const preNode = preQANodes.find(n => n.node_id === gn.node_id)!;
+      const qaFix = qaCorrections.get(gn.node_id);
+      const sceneText = qaFix?.scene_text || preNode.scene_text;
+      const imageBrief = imageBriefs.get(gn.node_id) || `dark cinematic ${genre} scene, dramatic lighting`;
 
       return {
         story_id: story.id, node_id: gn.node_id, step: gn.step, variant: "main",
-        scene_text: sceneText, image_prompt: imageBrief, image_url: null, choices,
+        scene_text: sceneText, image_prompt: imageBrief, image_url: null,
+        choices: preNode.choices,
       };
     });
 
     await supabase.from("story_nodes").insert(nodesToInsert);
 
-    // Update job: text done, start images phase
+    /* ── Update job: text done, start images phase ── */
     const imageEta = graph.length * 12;
     await supabase.from("generation_jobs").update({
       status: "generating_images",
       progress_percent: 20,
-      current_stage: "삽화 생성 중",
+      current_stage: "장면 삽화 준비 중",
       eta_seconds: imageEta,
     }).eq("id", job.id);
 
