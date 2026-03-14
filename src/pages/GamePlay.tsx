@@ -511,7 +511,7 @@ export default function GamePlay() {
             </div>
 
             {/* ── Choices ── */}
-            {node.choices && node.choices.length > 0 && !choosing && (
+            {node.choices && node.choices.length > 0 && !choosing && choicesReady && (
               <div className="px-4 pb-6 sm:px-6 sm:pb-8 mt-auto space-y-2.5">
                 <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest mb-1">선택하세요</p>
                 {node.choices.map((choice, i) => {
