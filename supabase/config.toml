@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.add-comment]
 verify_jwt = false
+
+[functions.tts-speak]
+verify_jwt = false
