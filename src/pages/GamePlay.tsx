@@ -83,6 +83,8 @@ export default function GamePlay() {
     const saved = localStorage.getItem("motion-comic");
     return saved !== null ? saved === "true" : true;
   });
+  const tts = useTTS();
+  const [choicesReady, setChoicesReady] = useState(false);
 
   useEffect(() => { loadCurrentScene(); }, [sessionId]);
 
