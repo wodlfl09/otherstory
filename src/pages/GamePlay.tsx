@@ -419,7 +419,17 @@ export default function GamePlay() {
             </div>
 
             {/* Status chips */}
-            <div className="flex items-center gap-1.5 shrink-0">
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                onClick={tts.toggle}
+                className={cn(
+                  "rounded-md p-1.5 transition-colors",
+                  tts.enabled ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
+                )}
+                aria-label="TTS 토글"
+              >
+                {tts.enabled ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
+              </button>
               <button
                 onClick={() => { const next = !motionComic; setMotionComic(next); localStorage.setItem("motion-comic", String(next)); }}
                 className={cn(
