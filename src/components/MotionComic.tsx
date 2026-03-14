@@ -26,9 +26,9 @@ const GENRE_PRESET_MAP: Record<string, GenrePreset> = {
 };
 
 const PRESET_STYLES: Record<GenrePreset, string> = {
-  cinematic: "brightness(1.05) contrast(1.08) saturate(1.05)",
-  noir: "brightness(0.92) contrast(1.12) saturate(0.7)",
-  soft: "brightness(1.08) contrast(0.98) saturate(1.1)",
+  cinematic: "brightness(1.04) contrast(1.06) saturate(1.04)",
+  noir: "brightness(0.9) contrast(1.1) saturate(0.65)",
+  soft: "brightness(1.06) contrast(0.97) saturate(1.08)",
 };
 
 // Deterministic but varied movement per step
