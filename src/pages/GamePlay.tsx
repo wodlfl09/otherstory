@@ -16,6 +16,8 @@ const GENRE_LABELS: Record<string, string> = {
 };
 import MotionComic from "@/components/MotionComic";
 import ShareCard from "@/components/game/ShareCard";
+import SceneTextRenderer from "@/components/game/SceneTextRenderer";
+import { useTTS } from "@/hooks/useTTS";
 import { cn } from "@/lib/utils";
 
 interface ChoiceFeedback {
