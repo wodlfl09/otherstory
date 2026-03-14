@@ -107,8 +107,8 @@ export default function GamePlay() {
       return;
     }
 
-    const { data: storyData } = await supabase.from("stories").select("title").eq("id", sess.story_id).single();
-    if (storyData) setStoryTitle(storyData.title);
+    const { data: storyData } = await supabase.from("stories").select("title, genre").eq("id", sess.story_id).single();
+    if (storyData) { setStoryTitle(storyData.title); setStoryGenre(storyData.genre); }
 
     // Count total unique nodes for this story to show accurate progress
     const { count } = await supabase.from("story_nodes")
