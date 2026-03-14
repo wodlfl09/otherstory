@@ -499,11 +499,15 @@ export default function GamePlay() {
               <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-background to-transparent pointer-events-none" />
             </div>
 
-            {/* Scene text - short & punchy */}
+            {/* Scene text - sequential reveal with style presets */}
             <div className="px-4 pt-2 pb-3 sm:px-6 sm:pt-3 sm:pb-4">
-              <p className="whitespace-pre-wrap leading-[1.85] text-foreground text-[15px] sm:text-base" style={{ wordBreak: "keep-all" }}>
-                {truncateSceneText(node.scene_text)}
-              </p>
+              <SceneTextRenderer
+                sceneText={truncateSceneText(node.scene_text)}
+                genre={storyGenre}
+                revealKey={node.node_id}
+                onRevealComplete={() => setChoicesReady(true)}
+                className="leading-[1.85] text-[15px] sm:text-base"
+              />
             </div>
 
             {/* ── Choices ── */}
