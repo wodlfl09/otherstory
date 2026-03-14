@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { toast } from "sonner";
-import { Film, ImageIcon, AlertTriangle, Shield, Clock, Brain, Search, ArrowLeft, Home, Swords } from "lucide-react";
+import { Film, Volume2, VolumeX, ImageIcon, AlertTriangle, Shield, Clock, Brain, Search, ArrowLeft, Home, Swords } from "lucide-react";
 
 const GENRE_LABELS: Record<string, string> = {
   sf: "SF", fantasy: "판타지", mystery: "추리", action: "액션",
@@ -16,6 +16,8 @@ const GENRE_LABELS: Record<string, string> = {
 };
 import MotionComic from "@/components/MotionComic";
 import ShareCard from "@/components/game/ShareCard";
+import SceneTextRenderer from "@/components/game/SceneTextRenderer";
+import { useTTS } from "@/hooks/useTTS";
 import { cn } from "@/lib/utils";
 
 interface ChoiceFeedback {
@@ -81,6 +83,18 @@ export default function GamePlay() {
     const saved = localStorage.getItem("motion-comic");
     return saved !== null ? saved === "true" : true;
   });
+  const tts = useTTS();
+  const [choicesReady, setChoicesReady] = useState(false);
+
+  // Trigger TTS and reset choices visibility on scene change
+  useEffect(() => {
+    if (node?.scene_text) {
+      setChoicesReady(false);
+      tts.speak(node.scene_text);
+    }
+    return () => tts.stop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [node?.node_id]);
 
   useEffect(() => { loadCurrentScene(); }, [sessionId]);
 
@@ -405,7 +419,17 @@ export default function GamePlay() {
             </div>
 
             {/* Status chips */}
-            <div className="flex items-center gap-1.5 shrink-0">
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                onClick={tts.toggle}
+                className={cn(
+                  "rounded-md p-1.5 transition-colors",
+                  tts.enabled ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
+                )}
+                aria-label="TTS 토글"
+              >
+                {tts.enabled ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
+              </button>
               <button
                 onClick={() => { const next = !motionComic; setMotionComic(next); localStorage.setItem("motion-comic", String(next)); }}
                 className={cn(
@@ -485,15 +509,19 @@ export default function GamePlay() {
               <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-background to-transparent pointer-events-none" />
             </div>
 
-            {/* Scene text - short & punchy */}
+            {/* Scene text - sequential reveal with style presets */}
             <div className="px-4 pt-2 pb-3 sm:px-6 sm:pt-3 sm:pb-4">
-              <p className="whitespace-pre-wrap leading-[1.85] text-foreground text-[15px] sm:text-base" style={{ wordBreak: "keep-all" }}>
-                {truncateSceneText(node.scene_text)}
-              </p>
+              <SceneTextRenderer
+                sceneText={truncateSceneText(node.scene_text)}
+                genre={storyGenre}
+                revealKey={node.node_id}
+                onRevealComplete={() => setChoicesReady(true)}
+                className="leading-[1.85] text-[15px] sm:text-base"
+              />
             </div>
 
             {/* ── Choices ── */}
-            {node.choices && node.choices.length > 0 && !choosing && (
+            {node.choices && node.choices.length > 0 && !choosing && choicesReady && (
               <div className="px-4 pb-6 sm:px-6 sm:pb-8 mt-auto space-y-2.5">
                 <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest mb-1">선택하세요</p>
                 {node.choices.map((choice, i) => {
