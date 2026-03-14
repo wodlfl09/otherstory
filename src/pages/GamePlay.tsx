@@ -68,6 +68,7 @@ export default function GamePlay() {
   const [node, setNode] = useState<StoryNode | null>(null);
   const [session, setSession] = useState<any>(null);
   const [storyTitle, setStoryTitle] = useState("");
+  const [storyGenre, setStoryGenre] = useState("sf");
   const [loading, setLoading] = useState(true);
   const [choosing, setChoosing] = useState(false);
   const [showAd, setShowAd] = useState(false);
@@ -106,8 +107,8 @@ export default function GamePlay() {
       return;
     }
 
-    const { data: storyData } = await supabase.from("stories").select("title").eq("id", sess.story_id).single();
-    if (storyData) setStoryTitle(storyData.title);
+    const { data: storyData } = await supabase.from("stories").select("title, genre").eq("id", sess.story_id).single();
+    if (storyData) { setStoryTitle(storyData.title); setStoryGenre(storyData.genre); }
 
     // Count total unique nodes for this story to show accurate progress
     const { count } = await supabase.from("story_nodes")
@@ -467,7 +468,7 @@ export default function GamePlay() {
             <div className="w-full relative">
               {node.image_url ? (
                 motionComic ? (
-                  <MotionComic imageUrl={node.image_url} genre={(session?.state as any)?.genre || "horror"} step={node.step} />
+                  <MotionComic imageUrl={node.image_url} genre={storyGenre} step={node.step} />
                 ) : (
                   <AspectRatio ratio={16 / 9} className="overflow-hidden">
                     <img src={node.image_url} alt={`장면 ${currentStep}`} className="h-full w-full object-cover" />

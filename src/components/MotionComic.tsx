@@ -26,20 +26,20 @@ const GENRE_PRESET_MAP: Record<string, GenrePreset> = {
 };
 
 const PRESET_STYLES: Record<GenrePreset, string> = {
-  cinematic: "brightness(1.05) contrast(1.08) saturate(1.05)",
-  noir: "brightness(0.92) contrast(1.12) saturate(0.7)",
-  soft: "brightness(1.08) contrast(0.98) saturate(1.1)",
+  cinematic: "brightness(1.04) contrast(1.06) saturate(1.04)",
+  noir: "brightness(0.9) contrast(1.1) saturate(0.65)",
+  soft: "brightness(1.06) contrast(0.97) saturate(1.08)",
 };
 
 // Deterministic but varied movement per step
 function getKenBurnsDirection(step: number) {
   const directions = [
-    { startX: 0, startY: 0, endX: -4, endY: -3 },
-    { startX: -3, startY: -2, endX: 2, endY: 1 },
-    { startX: 2, startY: -1, endX: -3, endY: -4 },
-    { startX: -2, startY: 3, endX: 3, endY: -2 },
-    { startX: 1, startY: -3, endX: -4, endY: 2 },
-    { startX: -4, startY: 1, endX: 2, endY: -3 },
+    { startX: 0, startY: 0, endX: -3, endY: -2 },
+    { startX: -2, startY: -1, endX: 2, endY: 1 },
+    { startX: 2, startY: -1, endX: -2, endY: -3 },
+    { startX: -1, startY: 2, endX: 2, endY: -2 },
+    { startX: 1, startY: -2, endX: -3, endY: 1 },
+    { startX: -3, startY: 1, endX: 1, endY: -2 },
   ];
   return directions[step % directions.length];
 }
