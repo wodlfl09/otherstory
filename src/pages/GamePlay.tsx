@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { toast } from "sonner";
-import { Film, ImageIcon, AlertTriangle, Shield, Clock, Brain, Search, ArrowLeft, Home } from "lucide-react";
+import { Film, ImageIcon, AlertTriangle, Shield, Clock, Brain, Search, ArrowLeft, Home, Swords } from "lucide-react";
 
 const GENRE_LABELS: Record<string, string> = {
   sf: "SF", fantasy: "판타지", mystery: "추리", action: "액션",
@@ -49,6 +49,19 @@ const FEEDBACK_ICONS: Record<string, { icon: typeof Search; color: string; label
   sanity: { icon: Brain, color: "text-purple-400", label: "정신력" },
 };
 
+/** Truncate scene_text to ~350 chars at sentence boundary for game view */
+function truncateSceneText(text: string, maxLen = 350): string {
+  if (!text || text.length <= maxLen) return text;
+  // Find last sentence-ending punctuation before maxLen
+  const cut = text.slice(0, maxLen);
+  const lastPeriod = Math.max(cut.lastIndexOf('.'), cut.lastIndexOf('。'), cut.lastIndexOf('!'), cut.lastIndexOf('?'), cut.lastIndexOf('다.'), cut.lastIndexOf('요.'));
+  if (lastPeriod > maxLen * 0.5) return text.slice(0, lastPeriod + 1);
+  // If no good break, cut at last space
+  const lastSpace = cut.lastIndexOf(' ');
+  if (lastSpace > maxLen * 0.5) return text.slice(0, lastSpace) + '…';
+  return cut + '…';
+}
+
 export default function GamePlay() {
   const navigate = useNavigate();
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -62,6 +75,7 @@ export default function GamePlay() {
   const [exitTarget, setExitTarget] = useState<"back" | "home" | null>(null);
   const [feedback, setFeedback] = useState<ChoiceFeedback[] | null>(null);
   const [feedbackVisible, setFeedbackVisible] = useState(false);
+  const [totalNodes, setTotalNodes] = useState(7);
   const [motionComic, setMotionComic] = useState(() => {
     const saved = localStorage.getItem("motion-comic");
     return saved !== null ? saved === "true" : true;
@@ -95,6 +109,12 @@ export default function GamePlay() {
     const { data: storyData } = await supabase.from("stories").select("title").eq("id", sess.story_id).single();
     if (storyData) setStoryTitle(storyData.title);
 
+    // Count total unique nodes for this story to show accurate progress
+    const { count } = await supabase.from("story_nodes")
+      .select("id", { count: "exact", head: true })
+      .eq("story_id", sess.story_id);
+    if (count) setTotalNodes(count);
+
     const currentNodeId = (sess as any).current_node_id || "n0";
     const { data: graphNode } = await supabase.from("story_nodes").select("*")
       .eq("story_id", sess.story_id).eq("node_id", currentNodeId).single();
@@ -117,11 +137,9 @@ export default function GamePlay() {
     if (!session || !node) return false;
     if (session.ad_shown) return false;
 
-    // Check if the selected choice leads to an ending node (no further choices)
     const selectedChoice = node.choices?.find(c => c.id === choiceId);
     if (!selectedChoice?.next_node_id) return false;
 
-    // Peek at next node to see if it's an ending
     const { data: nextNode } = await supabase.from("story_nodes")
       .select("choices")
       .eq("story_id", session.story_id)
@@ -131,7 +149,6 @@ export default function GamePlay() {
     const isEnding = !nextNode?.choices || (nextNode.choices as any[]).length === 0;
     if (!isEnding) return false;
 
-    // Only Free plan users see ads
     const { data: profile } = await supabase.from("profiles")
       .select("plan")
       .eq("user_id", session.user_id)
@@ -141,9 +158,7 @@ export default function GamePlay() {
   };
 
   const getFeedbackFromChoice = (choice: Choice): ChoiceFeedback[] => {
-    // Use AI-generated feedback if available
     if (choice.feedback && choice.feedback.length > 0) return choice.feedback;
-    // Fallback based on attitude
     const map: Record<string, ChoiceFeedback[]> = {
       positive: [{ type: "clue", label: "단서 획득", delta: 1 }, { type: "danger", label: "위험 상승", delta: 1 }],
       negative: [{ type: "danger", label: "위험 급상승", delta: 2 }, { type: "sanity", label: "정신력 감소", delta: -1 }],
@@ -156,7 +171,6 @@ export default function GamePlay() {
   const pendingChoiceRef = useRef<string | null>(null);
 
   const handleChoice = async (choiceId: string) => {
-    // Check if this choice leads to ending and user needs to see ad
     const needsAd = await checkEndingAdGate(choiceId);
     if (needsAd) {
       pendingChoiceRef.current = choiceId;
@@ -168,7 +182,6 @@ export default function GamePlay() {
     const selectedChoice = node?.choices?.find(c => c.id === choiceId);
     setChoosing(true);
 
-    // Show feedback immediately
     if (selectedChoice) {
       const fb = getFeedbackFromChoice(selectedChoice);
       setFeedback(fb);
@@ -176,10 +189,8 @@ export default function GamePlay() {
     }
 
     try {
-      // Wait for feedback to be seen
       await new Promise(resolve => setTimeout(resolve, 1200));
 
-      // Navigate to next pre-generated node (no AI generation during play)
       const { data, error } = await supabase.functions.invoke("navigate-choice", {
         body: { session_id: sessionId, choice_id: choiceId },
       });
@@ -219,7 +230,6 @@ export default function GamePlay() {
     await supabase.functions.invoke("mark-ad-shown", { body: { session_id: sessionId } });
     setShowAd(false);
     setSession((s: any) => s ? { ...s, ad_shown: true } : s);
-    // Continue with the pending choice after ad
     if (pendingChoiceRef.current) {
       const choiceId = pendingChoiceRef.current;
       pendingChoiceRef.current = null;
@@ -245,9 +255,11 @@ export default function GamePlay() {
     );
   }
 
-  const totalSteps = session?.duration_min === 10 ? 7 : session?.duration_min === 20 ? 13 : 19;
-  const progressPct = Math.min(100, ((session?.step || 0) / (totalSteps - 1)) * 100);
+  // Progress based on actual node count
+  const currentStep = (session?.step || 0) + 1;
+  const progressPct = Math.min(100, ((session?.step || 0) / Math.max(totalNodes - 1, 1)) * 100);
 
+  // ─── Ending Screen ───
   if (session?.finished) {
     const elapsed = session.created_at && session.updated_at
       ? Math.round((new Date(session.updated_at).getTime() - new Date(session.created_at).getTime()) / 60000)
@@ -301,7 +313,7 @@ export default function GamePlay() {
               <p className="text-[10px] text-muted-foreground mt-0.5">총 선택</p>
             </div>
             <div className="rounded-xl bg-card/50 backdrop-blur-sm border border-border p-4 text-center">
-              <p className="text-lg font-bold text-primary">{totalSteps}</p>
+              <p className="text-lg font-bold text-primary">{totalNodes}</p>
               <p className="text-[10px] text-muted-foreground mt-0.5">총 장면</p>
             </div>
             <div className="rounded-xl bg-card/50 backdrop-blur-sm border border-border p-4 text-center">
@@ -339,7 +351,7 @@ export default function GamePlay() {
             endingMessage={endingMessage}
             dominantIcon={dominant?.icon || "🤔"}
             dominantLabel={dominant?.label || "신중함"}
-            stats={{ choices: session.step || 0, scenes: totalSteps, elapsed: elapsed !== null ? `${elapsed}분` : "-" }}
+            stats={{ choices: session.step || 0, scenes: totalNodes, elapsed: elapsed !== null ? `${elapsed}분` : "-" }}
             tendencies={tendencies.map(t => ({ key: t.key, label: t.label, icon: t.icon, pct: Math.round(((attitudeCounts[t.key] || 0) / total) * 100) }))}
             imageUrl={node?.image_url}
           />
@@ -366,47 +378,47 @@ export default function GamePlay() {
     );
   }
 
+  // ─── Active Game Play ───
+  const isEnding = node && (!node.choices || node.choices.length === 0);
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Top bar - 2-row mobile layout */}
-      <div className="sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b border-border/50">
+      {/* ── Compact Top Bar ── */}
+      <div className="sticky top-0 z-30 bg-background/90 backdrop-blur-lg border-b border-border/40">
         <div className="max-w-4xl mx-auto px-3 sm:px-4">
-          {/* Row 1: Back / Title / Menu */}
-          <div className="flex items-center gap-2 py-2">
-            <button onClick={() => session?.finished ? navigate(-1) : setExitTarget("back")}
+          <div className="flex items-center gap-2 h-11">
+            {/* Back button */}
+            <button onClick={() => setExitTarget("back")}
               className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" aria-label="뒤로가기">
               <ArrowLeft className="h-4 w-4" />
             </button>
-            <h2 className="flex-1 min-w-0 font-display text-sm sm:text-base font-semibold text-foreground truncate" style={{ wordBreak: "keep-all" }}>
-              {storyTitle || `CH.${(session?.step || 0) + 1}`}
-            </h2>
-            <button onClick={() => session?.finished ? navigate("/home") : setExitTarget("home")}
-              className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" aria-label="홈으로">
-              <Home className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => { const next = !motionComic; setMotionComic(next); localStorage.setItem("motion-comic", String(next)); }}
-              className={cn(
-                "shrink-0 rounded-md p-1.5 transition-colors",
-                motionComic ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <Film className="h-3.5 w-3.5" />
-            </button>
-          </div>
-          {/* Row 2: Genre badge / Progress / Chapter chip */}
-          <div className="flex items-center gap-2 pb-2">
-            {(session?.state as any)?.genre && (
-              <span className="shrink-0 rounded-full bg-primary/10 text-primary text-[10px] font-medium px-2 py-0.5">
-                {GENRE_LABELS[(session?.state as any)?.genre] || (session?.state as any)?.genre}
+
+            {/* Progress pill */}
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <span className="shrink-0 font-display text-xs font-bold text-primary">
+                {currentStep}<span className="text-muted-foreground font-normal">/{totalNodes}</span>
               </span>
-            )}
-            <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
-              <div className="h-full rounded-full bg-primary transition-all duration-700 ease-out" style={{ width: `${progressPct}%` }} />
+              <div className="flex-1 h-1 rounded-full bg-secondary overflow-hidden">
+                <div className="h-full rounded-full bg-primary transition-all duration-700 ease-out" style={{ width: `${progressPct}%` }} />
+              </div>
             </div>
-            <span className="shrink-0 rounded-full bg-secondary text-muted-foreground text-[10px] font-medium px-2 py-0.5">
-              CH.{(session?.step || 0) + 1} · {Math.round(progressPct)}%
-            </span>
+
+            {/* Status chips */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                onClick={() => { const next = !motionComic; setMotionComic(next); localStorage.setItem("motion-comic", String(next)); }}
+                className={cn(
+                  "rounded-md p-1.5 transition-colors",
+                  motionComic ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Film className="h-3.5 w-3.5" />
+              </button>
+              <button onClick={() => setExitTarget("home")}
+                className="rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" aria-label="홈으로">
+                <Home className="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -424,19 +436,20 @@ export default function GamePlay() {
         </div>
       )}
 
-      {/* Choice feedback overlay */}
+      {/* ── Choice Feedback Overlay ── */}
       {feedbackVisible && feedback && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-background/70 backdrop-blur-sm">
-          <div className="flex gap-4 opacity-0 animate-fade-in">
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-background/60 backdrop-blur-sm">
+          <div className="flex gap-3 sm:gap-4">
             {feedback.map((fb, i) => {
               const meta = FEEDBACK_ICONS[fb.type];
               const Icon = meta?.icon || Search;
               return (
-                <div key={i} className="flex flex-col items-center gap-1 rounded-xl bg-card/80 backdrop-blur-xl border border-border/50 px-5 py-4 opacity-0 animate-fade-in"
-                  style={{ animationDelay: `${i * 200}ms` }}>
-                  <Icon className={cn("h-6 w-6", meta?.color || "text-foreground")} />
-                  <span className="text-xs font-bold text-foreground">{fb.label}</span>
-                  <span className={cn("text-sm font-bold", fb.delta > 0 ? "text-green-400" : "text-destructive")}>
+                <div key={i}
+                  className="flex flex-col items-center gap-1.5 rounded-2xl bg-card/90 backdrop-blur-xl border border-border/50 px-5 py-4 sm:px-6 sm:py-5 opacity-0 animate-fade-in"
+                  style={{ animationDelay: `${i * 150}ms` }}>
+                  <Icon className={cn("h-7 w-7 sm:h-8 sm:w-8", meta?.color || "text-foreground")} />
+                  <span className="text-[11px] font-bold text-foreground">{fb.label}</span>
+                  <span className={cn("text-base font-black", fb.delta > 0 ? "text-green-400" : "text-destructive")}>
                     {fb.delta > 0 ? `+${fb.delta}` : fb.delta}
                   </span>
                 </div>
@@ -446,39 +459,42 @@ export default function GamePlay() {
         </div>
       )}
 
-      {/* Main content */}
-      <div className="flex-1 max-w-4xl mx-auto w-full">
+      {/* ── Main Scene ── */}
+      <div className="flex-1 max-w-4xl mx-auto w-full flex flex-col">
         {node && (
-          <div className="opacity-0 animate-fade-in">
-            {/* Image - full width, prioritized */}
-            <div className="w-full">
+          <div className="flex-1 flex flex-col opacity-0 animate-fade-in">
+            {/* Image - hero, full width, cinematic */}
+            <div className="w-full relative">
               {node.image_url ? (
                 motionComic ? (
                   <MotionComic imageUrl={node.image_url} genre={(session?.state as any)?.genre || "horror"} step={node.step} />
                 ) : (
-                  <AspectRatio ratio={16 / 9} className="overflow-hidden border-b border-border">
-                    <img src={node.image_url} alt={`CH.${node.step + 1}`} className="h-full w-full object-cover" />
+                  <AspectRatio ratio={16 / 9} className="overflow-hidden">
+                    <img src={node.image_url} alt={`장면 ${currentStep}`} className="h-full w-full object-cover" />
                   </AspectRatio>
                 )
               ) : (
-                <AspectRatio ratio={16 / 9} className="overflow-hidden bg-secondary border-b border-border">
+                <AspectRatio ratio={16 / 9} className="overflow-hidden bg-secondary">
                   <div className="flex h-full w-full items-center justify-center text-muted-foreground/30">
                     <ImageIcon className="h-12 w-12" />
                   </div>
                 </AspectRatio>
               )}
+              {/* Gradient fade into text area */}
+              <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-background to-transparent pointer-events-none" />
             </div>
 
-            {/* Scene text */}
-            <div className="px-4 py-4 sm:px-6 sm:py-5">
-              <p className="whitespace-pre-wrap leading-[1.8] text-foreground text-[15px] sm:text-base">
-                {node.scene_text}
+            {/* Scene text - short & punchy */}
+            <div className="px-4 pt-2 pb-3 sm:px-6 sm:pt-3 sm:pb-4">
+              <p className="whitespace-pre-wrap leading-[1.85] text-foreground text-[15px] sm:text-base" style={{ wordBreak: "keep-all" }}>
+                {truncateSceneText(node.scene_text)}
               </p>
             </div>
 
-            {/* Choices - big touch targets for mobile */}
+            {/* ── Choices ── */}
             {node.choices && node.choices.length > 0 && !choosing && (
-              <div className="px-4 pb-8 sm:px-6 space-y-3">
+              <div className="px-4 pb-6 sm:px-6 sm:pb-8 mt-auto space-y-2.5">
+                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest mb-1">선택하세요</p>
                 {node.choices.map((choice, i) => {
                   const style = attitudeStyles[choice.attitude] || attitudeStyles.neutral;
                   return (
@@ -487,15 +503,15 @@ export default function GamePlay() {
                       disabled={choosing}
                       onClick={() => handleChoice(choice.id)}
                       className={cn(
-                        "w-full flex items-center gap-3 rounded-xl border-2 bg-card/50 backdrop-blur-sm text-left transition-all duration-200",
-                        "min-h-[56px] px-4 py-3.5 sm:p-4",
-                        "disabled:opacity-50 opacity-0 animate-fade-in active:scale-[0.98]",
+                        "w-full flex items-center gap-3 rounded-xl border-2 bg-card/60 backdrop-blur-sm text-left transition-all duration-200",
+                        "min-h-[56px] px-4 py-3.5",
+                        "disabled:opacity-50 opacity-0 animate-fade-in active:scale-[0.97]",
                         style.border, style.glow
                       )}
-                      style={{ animationDelay: `${200 + i * 100}ms` }}
+                      style={{ animationDelay: `${150 + i * 80}ms` }}
                     >
-                      <span className="text-xl sm:text-lg shrink-0">{style.icon}</span>
-                      <span className="flex-1 text-sm sm:text-sm font-medium text-foreground leading-snug">{choice.label}</span>
+                      <span className="text-lg shrink-0">{style.icon}</span>
+                      <span className="flex-1 text-sm font-medium text-foreground leading-snug line-clamp-2">{choice.label}</span>
                     </button>
                   );
                 })}
@@ -503,7 +519,7 @@ export default function GamePlay() {
             )}
 
             {choosing && !feedbackVisible && (
-              <div className="flex flex-col items-center justify-center gap-3 py-12 text-muted-foreground">
+              <div className="flex flex-col items-center justify-center gap-3 py-12 text-muted-foreground mt-auto">
                 <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                 <p className="text-xs">다음 장면으로 이동 중...</p>
               </div>
