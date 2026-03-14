@@ -141,12 +141,11 @@ serve(async (req) => {
       )
     );
 
-    // Update nodes with images
+    // Update nodes with images (skip if generation failed — will retry next call)
     let successCount = 0;
-    const PLACEHOLDER_IMAGE = "https://placehold.co/1280x720/1a1a2e/ffffff?text=Scene";
     for (const result of results) {
-      const finalUrl = result.imageUrl || PLACEHOLDER_IMAGE;
-      await supabase.from("story_nodes").update({ image_url: finalUrl })
+      if (!result.imageUrl) continue;
+      await supabase.from("story_nodes").update({ image_url: result.imageUrl })
         .eq("story_id", storyId).eq("node_id", result.nodeId);
 
       // Set cover for first node
